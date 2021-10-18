@@ -5,3 +5,5 @@
 *.glob
 *.aux
 .lia.cache
+*_ott.v
+*_inf.v
