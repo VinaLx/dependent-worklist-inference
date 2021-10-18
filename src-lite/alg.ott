@@ -1,0 +1,196 @@
+metavar aexprvar, x, y, z ::= {{ repr-locally-nameless }}
+metavar number , n      ::= {{ coq nat }}
+metavar exvar  , ex, ey ::= {{ coq var }}
+metavar kindvar, kx, ky ::= {{ coq var }}
+
+grammar
+
+akind, k :: 'ak_' ::=
+  | *   :: :: star
+  | box :: :: box
+  | kx  :: :: ex
+
+abody, ab :: 'ab_' ::=
+  | e : A :: :: anno
+
+aexpr, e, A, B, C, D, t, s :: 'ae_' ::=
+  | x  :: :: var
+  | k  :: :: kind
+  | ex :: :: ex
+  | n  :: :: num
+  | int     :: :: int
+  | bot : A :: :: bot
+  | e1 e2   :: :: app
+  | lambda x : A . ab :: :: abs  (+ bind x in ab +)
+  | pi     x : A . B  :: :: pi   (+ bind x in B  +)
+  | bind   x : A . ab :: :: bind (+ bind x in ab +)
+  | forall x : A . B  :: :: all  (+ bind x in B  +)
+  | castup [ A ] e :: :: castup
+  | castdn       e :: :: castdn
+  | ( e )         :: S :: paren {{ coq ([[e]]) }}
+  | [ e1 / x ] e2 :: M :: subst {{ coq (open_aexpr_wrt_aexpr [[x e2]] [[e1]]) }}
+
+obind, ob :: 'ob_' ::=
+  | none   :: :: none
+  | x :! A :: :: bind
+
+binding, b :: 'b_' ::=
+  |   x  :' A :: :: var
+  | ^ ex : A :: :: ex
+  | < kx >   :: :: kind
+
+work, w :: 'w_' ::=
+  | ob |= e1 <: e2 <= A :: :: check
+  | e1 <: e2    => x . wl  :: :: infer     (+ bind x in wl +)
+  | A . e1 & e2 => x . wl  :: :: infer_app (+ bind x in wl +)
+  | e    --> x . wl :: :: reduce    (+ bind x in wl +)
+  | A <~: B         :: :: compact
+
+worklist, wl :: 'wl_' ::=
+  | nil     :: :: nil
+  | wl |- w :: :: cons
+  | wl , b  :: :: bind
+
+formula :: formula_ ::=
+  | judgement :: :: judgement
+
+substitutions
+  single e x  :: subst
+  single w  x :: subst
+  single wl x :: subst
+  single e ex  :: ex_subst
+  single w  ex :: ex_subst
+  single wl ex :: ex_subst
+  single k kx  :: k_subst
+  single e kx  :: k_subst
+  single w  kx :: k_subst
+  single wl kx :: k_subst
+
+freevars
+  aexpr x  :: fv
+  aexpr ex :: fex
+  akind kx :: fkv
+
+defns
+InWorklist :: '' ::=
+
+defn
+b in wl :: :: in_wl :: 'iwl_'
+by
+
+------------- :: here
+b in wl , b
+
+b in wl
+------------- :: there_w
+b in wl |- w
+
+b1 in wl
+------------- :: there_b
+b1 in wl, b2
+
+defns
+InScope :: '' ::=
+
+defn
+wl [ b1 ] [ b2 ] :: :: in_scope :: 'ins_'
+by
+
+b1 in wl
+---------------- :: here
+wl , b2 [b1][b2]
+
+wl [b1][b2]
+---------------- :: there_w
+wl |- w [b1][b2]
+
+wl [b1][b2]
+---------------- :: there_b
+wl , b [b1][b2]
+
+defns
+Monotype :: '' ::=
+
+defn
+mono A :: :: mono_atype :: 'amono_'
+by
+
+----------- :: kind
+mono k
+
+----------- :: ex
+mono ex
+
+----------- :: var
+mono x
+
+------------- :: int
+mono int
+
+----------- :: lit
+mono n
+
+----------------- :: bot
+mono bot : A
+
+mono e1
+mono e2
+----------------- :: app
+mono (e1 e2)
+
+mono A
+mono B
+---------------------- :: pi
+mono pi x : A . B
+
+mono e
+-------------------------- :: lambda
+mono lambda x : A . e : B
+
+mono e
+------------------------ :: bind
+mono bind x : A . e : B
+
+% mono e
+% ---------------------- :: mu
+% mono mu x : A . e
+
+mono e
+---------------------- :: castup
+mono castup [A] e
+
+mono e
+---------------------- :: castdn
+mono castdn e
+
+defns
+Reduce :: '' ::=
+
+defn
+e1 --> e2 :: :: areduce :: 'ar_'
+by
+
+e1 --> e2
+---------------- :: app
+e1 e3 --> e2 e3
+
+-------------------------------------------- :: beta
+(lambda x : A. e1 : B) e2 --> [e2 / x] e1
+
+mono e
+-------------------------------------------- :: inst
+(bind x : A. e1 : B) e2 --> ([e / x] e1) e2
+
+% -------------------------------------- :: mu
+% mu x : A. e --> [mu x : A. e / x] e
+
+e1 --> e2
+-------------------------------- :: castdn
+castdn e1 --> castdn e2
+
+mono e
+-------------------------------------------------------- :: cast_inst
+castdn (bind x : A. e1 : B) --> castdn ([e / x] e1)
+
+-------------------------------- :: cast_elim
+castdn (castup [B] e) --> e
