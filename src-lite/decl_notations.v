@@ -16,16 +16,19 @@ Notation "⊢ G" :=
 Notation "A ⟶ B" := (reduce A B)
   (at level 65, no associativity) : type_scope.
 
+Notation "x :' A ∈ G" := (in_ctx x A G)
+  (at level 65, no associativity) : type_scope.
+
 Declare Scope context_scope.
 Delimit Scope context_scope with ctx.
 Bind Scope context_scope with context.
 
 Notation "G , x : A" :=
   (ctx_cons G x A)
-    (at level 59, x at level 0, left associativity) : context_scope.
+    (at level 58, x at level 0, left associativity) : context_scope.
 
 Reserved Notation "G1 ,, G2"
-  (at level 59, left associativity).
+  (at level 58, left associativity).
 
 Fixpoint ctx_app (Γ1 Γ2 : context) : context :=
   match Γ2 with
@@ -35,14 +38,21 @@ Fixpoint ctx_app (Γ1 Γ2 : context) : context :=
 
 where "G1 ,, G2" := (ctx_app G1 G2) : context_scope.
 
+Notation "⟦ v /' x ⟧ G" :=
+  (subst_context v x G)
+    ( at level 56, v at level 50, x at level 0
+    , right associativity) : context_scope.
+
 Declare Scope expr_scope.
 Delimit Scope expr_scope with expr.
 Bind Scope expr_scope with expr.
 
-Notation "` x" := (e_var_f x) (at level 0, no associativity) : expr_scope.
-Notation "↑ x" := (e_var_b x) (at level 0, no associativity) : expr_scope.
+Notation "` x" := (e_var_f x)
+  (at level 0, x at level 0, no associativity) : expr_scope.
+Notation "↑ x" := (e_var_b x)
+  (at level 0, x at level 0, no associativity) : expr_scope.
 
-Notation "[ v / x ] e" :=
+Notation "[ v /' x ] e" :=
   (subst_expr v x e)
     ( at level 49, v at level 50, x at level 0
     , right associativity) : expr_scope.
@@ -61,7 +71,7 @@ Notation "◻" := (e_kind k_box) (at level 0, no associativity) : expr_scope.
 Notation "⧼ k ⧽" := (e_kind k)
   (at level 0, no associativity) : expr_scope.
 
-Notation "'λ' A , e : B" :=
+Notation "'λ_' A , e : B" :=
   (e_abs A (b_anno e B))
     (at level 50, A at level 50, e at level 50, no associativity) : expr_scope.
 
@@ -81,9 +91,9 @@ Notation "G ⊢ e1 <: e2 ⇐ A" := (busub G e1 e2 d_check A)
 Notation "G ⊢ e ⇐ A" := (busub G e e d_check A)
     (at level 65, e at level 50, no associativity) : type_scope.
 
-Notation "G ⊢ A ⋅ e1 & e2 ⇒ B" :=
-  (infer_app G A e1 e2 B)
-    ( at level 65, A at level 50, e1 at level 50, e2 at level 50
+Notation "G ⊢ A ⋅ e ⇒ B" :=
+  (infer_app G A e B)
+    ( at level 65, A at level 50, e at level 50
     , no associativity) : type_scope.
 
 Notation "G ⊢ A ⟼ B" := (greduce G A B)
@@ -131,9 +141,9 @@ Notation "e ⇒ wl" :=
   (dw_infer e e wl)
     (at level 55, no associativity) : dwork_scope.
 
-Notation "A ⋅ e1 & e2 ⇒ wl" :=
-  (dw_infer_app A e1 e2 wl)
-    ( at level 55, e1 at level 50, e2 at level 50
+Notation "A ⋅ e ⇒ wl" :=
+  (dw_infer_app A e wl)
+    ( at level 55, e at level 50
     , no associativity) : dwork_scope.
 
 Notation "A ⟼ wl" :=

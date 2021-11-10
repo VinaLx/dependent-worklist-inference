@@ -42,7 +42,7 @@ obindd, ob :: 'dob_' ::=
 dwork, w :: 'dw_' ::=
   | ob |= e1 <: e2 <= A :: :: check
   | e1 <: e2    => x . wl :: :: infer (+ bind x in wl +)
-  | A . e1 & e2 => x . wl :: :: infer_app (+ bind x in wl +)
+  | A . e => x . wl :: :: infer_app (+ bind x in wl +)
   | e --> x . wl :: :: reduce (+ bind x in wl +)
   | A <~: B      :: :: compact
 
@@ -232,13 +232,11 @@ G , x : A2 |- B1 <: B2 : k2
 ---------------------------------------- :: pi
 G |- pi x : A1. B1 <: pi x : A2. B2 : k2
 
-mono t1
-mono t2
-G |- t1 <: t2 : A
-G |- t2 <: t1 : A
+mono t
+G |- t : A
 G |- e1 <: e2 : pi x : A. B
 ------------------------------- :: app
-G |- e1 t1 <: e2 t2 : [t1/x]B
+G |- e1 t <: e2 t : [t/x]B
 
 G |- A1 <: A2 : k
 G |- A2 <: A1 : k
@@ -314,21 +312,20 @@ G |- A => k
 |=> G , x : A
 
 defn
-G |- A . e1 & e2 =>> B :: :: infer_app :: 'iapp_'
+G |- A . e =>> B :: :: infer_app :: 'iapp_'
 by
 
 G , x : A |- B => k
-G |- e1 <: e2 <= A
-G |- e2 <: e1 <= A
+G |- e <= A
 ----------------------------------- :: pi
-G |- pi x : A. B . e1 & e2 =>> [e1 / x] B
+G |- pi x : A. B . e =>> [e / x] B
 
 mono t
 G |- t <= A
 G , x : A |- B : *
-G |- [t / x] B . e1 & e2 =>> C
+G |- [t / x] B . e =>> C
 ----------------------------------- :: all
-G |- forall x : A. B . e1 & e2 =>> C
+G |- forall x : A. B . e =>> C
 
 defn
 G |- e1 -->> e2 :: :: greduce :: 'gr_'
@@ -398,12 +395,11 @@ G , x : A2 |- B1 <: B2 <= box
 ------------------------------------------- :: pi_chk
 G |- pi x : A1. B1 <: pi x : A2. B2 <= box
 
-mono t1
-mono t2
+mono t
 G |- e1 <: e2 => A
-G |- A . t1 & t2 =>> B
+G |- A . t =>> B
 ----------------------- :: app
-G |- e1 t1 <: e2 t2 => B
+G |- e1 t <: e2 t => B
 
 G |- A1 <: A2 => k
 G |- A2 <: A1 => k

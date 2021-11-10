@@ -98,7 +98,7 @@ Delimit Scope aexpr_scope with aexpr.
 Bind Scope aexpr_scope with aexpr.
 
 Notation "`′ x" :=
-  (ae_var_f x) (at level 0, no associativity) : aexpr_scope.
+  (ae_var_f x) (at level 0, x at level 0, no associativity) : aexpr_scope.
 
 Notation "↑′ n" :=
   (ae_var_b n) (at level 0, n at level 0) : aexpr_scope.
@@ -126,7 +126,7 @@ Notation "⧼ k ⧽′" := (ae_kind k) (at level 0, no associativity) : aexpr_sc
 
 Notation "⧼ `^ x ⧽" := (ae_kind (ak_ex x)) (at level 0, no associativity) : aexpr_scope.
 
-Notation "`^ x" := (ae_ex x) (at level 0, no associativity) : aexpr_scope.
+Notation "`^ x" := (ae_ex x) (at level 0, x at level 0, no associativity) : aexpr_scope.
 
 Notation "λ′ A , e : B" :=
   (ae_abs A (ab_anno e B))

@@ -37,14 +37,15 @@ where "⌊ wl ⌋" := (to_ctx wl) : context_scope.
 
 Reserved Notation "⪧ wl" (at level 60, no associativity).
 Inductive dwl_step : dworklist → Prop :=
+| dst_nil : ⪧ dwl_nil
 | dst_infer : forall Γ e1 e2 c A
   , ⌊ Γ ⌋ ⊢ e1 <: e2 ⇒ A
   → ⪧ Γ ⫢ c $ A
   → ⪧ Γ ⊨ e1 <: e2 ⇒ c
-| dst_infer_app : forall Γ A e1 e2 c B
-  , ⌊ Γ ⌋ ⊢ A ⋅ e1 & e2 ⇒ B
+| dst_infer_app : forall Γ A e c B
+  , ⌊ Γ ⌋ ⊢ A ⋅ e ⇒ B
   → ⪧ Γ ⫢ c $ B
-  → ⪧ Γ ⊨ A ⋅ e1 & e2 ⇒ c
+  → ⪧ Γ ⊨ A ⋅ e ⇒ c
 | dst_reduce : forall Γ A c B
   , ⌊ Γ ⌋ ⊢ A ⟼ B
   → ⪧ Γ ⫢ c $ B
@@ -59,3 +60,6 @@ Inductive dwl_step : dworklist → Prop :=
   → ⪧ Γ ⊨ ob ⊢? e1 <: e2 ⇐ A
 where "⪧ wl" := (dwl_step wl) : type_scope
 .
+
+#[export]
+Hint Constructors dwl_step : core.

@@ -19,12 +19,9 @@ Scheme busub_refl_mut := Induction for busub     Sort Prop
 Theorem bidir_refl_l : forall Γ e1 e2 d A,
     busub Γ e1 e2 d A -> busub Γ e1 e1 d A.
 Proof.
-  intros.
-  pattern Γ, e1, e2, d, A, H.
-  apply busub_refl_mut with
-      (P0 := fun c A e1 e2 B (H : c ⊢ A ⋅ e1 & e2 ⇒ B) => c ⊢ A ⋅ e1 & e1 ⇒ B);
-    intros; eauto.
+  intros; induction H; eauto.
 Qed.
+
 
 Theorem bidir_weakening : forall Γ1 Γ2 Γ3 e1 e2 d A,
     busub (Γ1,,      Γ3) e1 e2 d A -> ⫦ Γ1 ,, Γ2 ,, Γ3 ->

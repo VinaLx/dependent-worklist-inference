@@ -96,7 +96,8 @@ Proof with autorewrite with ctx; eauto.
   pattern Γ, e1, e2, C, Hind.
   apply usub_mut with
     (P0 := fun Γ (_ : ⊢ Γ) =>
-      forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2); intros; subst.
+             forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2);
+    intros; subst.
   - apply s_var.
     + auto.
     + admit.
@@ -106,7 +107,7 @@ Proof with autorewrite with ctx; eauto.
   - eauto.
   - pick fresh x' and apply s_abs...
   - pick fresh x' and apply s_pi...
-  - eauto.
+  - admit.
   - pick fresh x' and apply s_bind...
   - eauto.
   - eauto.
@@ -130,6 +131,51 @@ Proof.
     eauto using narrowing.
 Qed.
 
+Lemma reduction_subst : forall e1 e2 x v,
+  lc_expr v → e1 ⟶ e2 → [v /' x] e1 ⟶ [v /' x] e2.
+Proof.
+  intros. induction H0.
+  - simpl. constructor. admit. auto.
+  - simpl. replace ([v /' x] e1 ^^ e2) with (([v /' x] e1) ^^ ([v /' x]e2));
+     [> constructor; admit| admit].
+  - admit.
+  - simpl. eauto.
+  - admit.
+  - simpl. constructor; admit.
+Admitted.
+
+Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
+  , Γ1 , x : A ,, Γ2 ⊢ e1 <: e2 : B → forall v1 v2
+  , Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A
+  → Γ1 ,, ⟦v1 /' x⟧ Γ2 ⊢ [v1 /' x] e1 <: [v2 /' x] e2 : [v1 /' x] B
+  ∧ Γ1 ,, ⟦v1 /' x⟧ Γ2 ⊢ [v2 /' x] e1 <: [v1 /' x] e2 : [v1 /' x] B.
+Proof.
+  intros * H.
+  remember (Γ1, x : A,, Γ2) as Γ.
+  generalize dependent Γ2.
+  pattern Γ, e1, e2, B, H.
+  apply usub_mut with
+    (P0 := fun c wf => forall Γ2 v1 v2, c = Γ1 , x : A ,, Γ2
+      → Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A → ⊢ Γ1 ,, ⟦v1 /' x⟧ Γ2);
+    intros; subst; simpl.
+  - destruct (x0 == x).
+    + admit.
+    + admit.
+  - eauto 6.
+  - eauto 6.
+  - eauto 6.
+  - split.
+    + admit.
+    + admit.
+  - split.
+    + pick fresh x' and apply s_abs; admit.
+    + apply s_sub with (e_pi ([v2 /' x] A1) ([v1 /' x] B1)) k2.
+      admit.
+      * econstructor.
+
+Admitted.
+
+
 Theorem refl_r : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> Γ ⊢ e2 : A.
 Proof.
@@ -142,13 +188,8 @@ Proof.
     pick fresh x; specialize (H5 x Fr);
       apply wt_wf in H5; inversion H5; subst; eauto.
   (* app, need equiv apply *)
-  - admit.
-    (* eapply s_sub with (e_all A2 B2) k_star.
-    + pick fresh x and apply s_bind; eauto using narrowing_cons.
-    + pick fresh x and apply s_forall; eauto using narrowing_cons.
-     *)
   - eapply s_sub with (e_all A2 B2) k_star.
     + pick fresh x and apply s_bind; eauto using narrowing_cons.
     + pick fresh x and apply s_forall; eauto using narrowing_cons.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
-Admitted.
+Qed.

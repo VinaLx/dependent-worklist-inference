@@ -83,6 +83,9 @@ Inductive reorder : worklist → list binding → var → aexpr → worklist →
 where "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2" := (reorder G1 psi x e G2) : type_scope
 .
 
+#[export]
+Hint Constructors reorder : core.
+
 (* variance sign for monoization *)
 Inductive vsign : Set :=
 | v_pos : vsign
@@ -147,6 +150,9 @@ Inductive monoize : atoms → aexpr → vsign → aexpr → list binding → Pro
   → ae_castup A e1 ⤚ s ⇥ ae_castup A e2 ‖ ψ \ L
 where "e1 ⤚ s ⇥ e2 ‖ bs \ L" := (monoize L e1 s e2 bs) : type_scope.
 
+#[export]
+Hint Constructors monoize : core.
+
 Reserved Notation "⟦ e /′ ^ x ⟧ G"
   (at level 56, e at level 50, x at level 0, right associativity).
 Fixpoint subst_ex (e : aexpr) (x : var) (Γ : worklist) : worklist :=
@@ -178,6 +184,7 @@ where "⟦ k /′ ⧼ x ⧽ ⟧ G" := (subst_k k x G) : worklist_scope
 
 Reserved Notation "⪧′ wl" (at level 65, no associativity).
 Inductive wl_step : worklist -> Prop :=
+| st_nil : ⪧′ wl_nil
 (* decl-like inference *)
 | st_var : forall Γ x A c
   , x :′ A  ∈′ Γ
@@ -359,3 +366,6 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ,′ ⧼^k⧽
 where "⪧′ wl" := (wl_step wl) : type_scope
 .
+
+#[export]
+Hint Constructors wl_step : core.

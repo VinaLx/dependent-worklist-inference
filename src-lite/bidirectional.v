@@ -9,9 +9,9 @@ Proof.
   pattern Γ, e1, e2, d, A, H.
   apply busub_ind_dep with
       (P0 := fun Γ (_ : ⫦ Γ) => ⊢ Γ)
-      (P1 := fun G A e1 e2 B (_ : G ⊢ A ⋅ e1 & e2 ⇒ B) =>
-        exists D E, G ⊢ e1 <: e2 : D /\ G ⊢ e2 <: e1 : D
-        /\ B = E ^^ e1 /\ (A = e_pi D E \/ G ⊢ A <: e_pi D E : ⋆))
+      (P1 := fun G A e B (_ : G ⊢ A ⋅ e ⇒ B) =>
+        exists D E, G ⊢ e : D
+        /\ B = E ^^ e /\ (A = e_pi D E \/ G ⊢ A <: e_pi D E : ⋆))
       (P2 := fun G A B (_ : G ⊢ A ⟼ B) => A ⟶ B \/ exists C, G ⊢ A <: C : ⋆ /\ C ⟶ B);
     intros.
   - admit.
@@ -24,7 +24,7 @@ Proof.
   - admit.
   - admit.
   - (* app *)
-    destruct H1 as (D & E & Ht1 & Ht2 & -> & [-> | Hsub]).
+    destruct H1 as (D & E & Ht & -> & [-> | Hsub]).
     + eauto.
     + eauto.
   - admit.
@@ -45,7 +45,7 @@ Proof.
 
   (* infer_app *)
   - exists A0, B; eauto.
-  - destruct H1 as (D & E & Ht1 & Ht2 & -> & [Eb | Hsub]).
+  - destruct H1 as (D & E & Ht & -> & [Eb | Hsub]).
     + exists D, E; repeat split; eauto 3; right.
       rewrite <- Eb.
       pick fresh x and apply s_forall_l; eauto; admit.
@@ -75,7 +75,7 @@ Proof.
   - admit.
   - admit.
   - (* app *)
-    eapply bs_sub with (A := B ^^ t1).
+    eapply bs_sub with (A := B ^^ t).
     + eapply bs_app; eauto 3; admit.
     + admit.
   - admit.

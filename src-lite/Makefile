@@ -14,7 +14,14 @@ ott : alg_ott.v decl_ott.v
 
 lngen : decl_inf.v
 
-${COQ_MAKEFILE} : ${COQ_PROJECT} decl_ott.v decl_inf.v alg_ott.v alg_inf.v
+.FILE_LIST : *_inf.v FORCE
+	ls -1 *.v | sort -s > .FILE_LIST.tmp
+	diff $@ .FILE_LIST.tmp || cp .FILE_LIST.tmp $@
+	rm .FILE_LIST.tmp
+
+FORCE:
+
+${COQ_MAKEFILE} : ${COQ_PROJECT} *_ott.v *_inf.v .FILE_LIST # decl_ott.v decl_inf.v alg_ott.v alg_inf.v
 	coq_makefile -o $@ -f ${COQ_PROJECT} *.v
 
 coq : ${COQ_MAKEFILE}
