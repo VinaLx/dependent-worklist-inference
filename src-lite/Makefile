@@ -12,7 +12,7 @@ ott : alg_ott.v decl_ott.v
 %_inf.v : %_ott.v
 	lngen --coq $@ --coq-ott $*_ott $*.ott
 
-lngen : decl_inf.v
+lngen : alg_inf.v decl_inf.v
 
 .FILE_LIST : *_inf.v FORCE
 	ls -1 *.v | sort -s > .FILE_LIST.tmp
