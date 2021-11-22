@@ -2,8 +2,9 @@ Require Import decl_properties.
 Require Import Program.Tactics.
 Require Import bidir_properties.
 
+(*
 Theorem bidir_sound : forall Γ e1 e2 A d,
-    busub Γ e1 e2 d A -> Γ ⊢ e1 <: e2 : A.
+    busub Γ e1 e2 d A -> Γ ⊢ e1 <: e2 : A
 Proof.
   intros.
   pattern Γ, e1, e2, d, A, H.
@@ -59,6 +60,7 @@ Proof.
     destruct H1.
     + eauto.
     + destruct_conjs. exists H1. admit.
+
 Admitted.
 
 Theorem bidir_complete : forall Γ e1 e2 A,
@@ -93,3 +95,4 @@ Proof.
   - auto.
   - admit.
 Admitted.
+*)

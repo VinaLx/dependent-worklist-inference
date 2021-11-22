@@ -1,0 +1,323 @@
+metavar bexprvar, x, y, z ::= {{ repr-locally-nameless }}
+metavar number, n ::= {{ coq nat }}
+
+grammar
+
+bkind, k :: 'bk_' ::= {{ com kind }}
+  | *   :: :: star {{ com type of type }}
+  | box :: :: box  {{ com type of type of type }}
+
+bexpr, e, A, B, C, D, t, s :: 'be_' ::= {{ com expressions }}
+  | x     :: :: var  {{ com variable }}
+  | k     :: :: kind {{ com type of type }}
+  | n     :: :: num  {{ com integer value }}
+  | int   :: :: int  {{ com integer type }}
+  | bot   :: :: bot  {{ com bottom value }}
+  | e1 e2 :: :: app  {{ com application }}
+  | lambda x     . e :: :: abs  (+ bind x in e +) {{ com abstraction }}
+  | pi     x : A . B :: :: pi   (+ bind x in B +) {{ com dependent product }}
+  | bind   x     . e :: :: bind (+ bind x in e +) {{ com implicit lambda }}
+  | forall x : A . B :: :: all  (+ bind x in B +) {{ com implicit function type }}
+%  | mu     x : A . e :: :: mu   (+ bind x in e +) {{ com fix point expression }}
+  | castup e :: :: castup {{ com cast up }}
+  | castdn e :: :: castdn {{ com cast down }}
+  | e : A :: :: anno {{ com annotation }}
+  | ( e )         :: S :: paren {{ coq ([[e]]) }}
+  | [ e1 / x ] e2 :: M :: subst {{ coq (open_bexpr_wrt_bexpr [[x e2]] [[e1]]) }}
+
+bcontext, G :: 'bctx_' ::=
+  | nil       :: :: nil
+  | G , x : A :: :: cons
+
+dir, d :: 'd_' ::=
+  | => :: :: infer
+  | <= :: :: check
+
+obindd, ob :: 'dob_' ::=
+  | none   :: :: none
+  | x _: A :: :: bind
+
+dwork, w :: 'dw_' ::=
+  | ob |= e1 <: e2 <= A :: :: check
+  | e1 <: e2  => x . wl :: :: infer (+ bind x in wl +)
+  | A . e => x . wl :: :: infer_app (+ bind x in wl +)
+  | e --> x . wl :: :: reduce (+ bind x in wl +)
+  | A <~: B      :: :: compact
+
+dworklist, wl :: 'dwl_' ::=
+  | wnil         :: :: nil
+  | wl |- w      :: :: cons
+  | wl ,' x :' A :: :: bind
+
+formula :: formula_ ::=
+  | judgement  ::   :: judgement
+  | G |- e d A :: M :: bi_typing {{ coq (busub [[G]] [[e]] [[e]] [[d]] [[A]]) }}
+  | x # G      :: M :: ctx_fresh {{ coq ([[x]] `notin` bctx_dom [[G]]) }}
+
+substitutions
+  single e x :: subst
+
+freevars
+  bexpr    x :: fv
+
+embed {{ coq
+
+Fixpoint bctx_dom (G : bcontext) : atoms :=
+  match G with
+  | bctx_nil => {}
+  | bctx_cons G x A => add x (bctx_dom G)
+  end
+.
+
+}}
+
+defns
+Monotype :: '' ::=
+
+defn
+mono A :: :: mono_btype :: 'bmono_'
+by
+
+----------- :: kind
+mono k
+
+----------- :: var
+mono x
+
+------------- :: int
+mono int
+
+----------- :: lit
+mono n
+
+----------------- :: bot
+mono bot
+
+mono e1
+mono e2
+----------------- :: app
+mono (e1 e2)
+
+mono A
+mono B
+---------------------- :: pi
+mono pi x : A . B
+
+mono e
+-------------------------- :: lambda
+mono lambda x . e
+
+mono e
+------------------------ :: bind
+mono bind x . e
+
+% mono e
+% ---------------------- :: mu
+% mono mu x : A . e
+
+mono e
+---------------------- :: castup
+mono castup e
+
+mono e
+---------------------- :: castdn
+mono castdn e
+
+mono e
+---------------------- :: anno
+mono e : A
+
+defns
+Reduce :: '' ::=
+
+defn
+e1 --> e2 :: :: reduce :: 'r_' {{ com Reduction in Source Language }}
+by
+
+e1 --> e2
+---------------- :: app
+e1 e3 --> e2 e3
+
+-------------------------------------------- :: beta
+(lambda x . e1) e2 --> [e2 / x] e1
+
+mono e
+-------------------------------------------- :: inst
+(bind x . e1) e2 --> ([e / x] e1) e2
+
+% -------------------------------------- :: mu
+% mu x : A. e --> [mu x : A. e / x] e
+
+e1 --> e2
+-------------------------------- :: castdn
+castdn e1 --> castdn e2
+
+mono e
+-------------------------------------------------------- :: cast_inst
+castdn (bind x . e) --> castdn ([e / x] e1)
+
+-------------------------------- :: cast_elim
+castdn (castup e) --> e
+
+defns
+InContext :: '' ::=
+
+defn
+x : A in G :: :: in_ctx :: 'in_'
+by
+
+------------------ :: here
+x : A in G, x : A
+
+x : A in G
+------------------ :: there
+x : A in G, y : B
+
+defns
+BidirectionalUnifiedSubtyping :: '' ::=
+
+defn
+|=> G :: :: bwf_context :: 'bwf_'
+by
+
+-------- :: nil
+|=> nil
+
+|=> G
+x # G
+G |- A => k
+-------------- :: cons
+|=> G , x : A
+
+defn
+G |- A . e =>> B :: :: infer_app :: 'iapp_'
+by
+
+G , x : A |- B => k
+G |- e <= A
+----------------------------------- :: pi
+G |- pi x : A. B . e =>> [e / x] B
+
+mono t
+G |- t <= A
+G , x : A |- B => *
+G |- [t / x] B . e =>> C
+----------------------------------- :: all
+G |- forall x : A. B . e =>> C
+
+defn
+G |- e1 -->> e2 :: :: greduce :: 'gr_'
+by
+
+e1 --> e2
+---------------- :: reduce
+G |- e1 -->> e2
+
+mono t
+G |- t <= A
+G , x : A |- B => *
+G |- [t / x] B -->> C
+---------------------------- :: all
+G |- forall x : A. B -->> C
+
+
+defn
+G |- e1 <: e2 d A :: :: busub :: 'bs_' {{ com Unified Subtyping }}
+by
+
+|=> G
+x : A in G
+------------------- :: var
+G |- x <: x => A
+
+|=> G
+------------------- :: lit
+G |- n <: n => int
+
+|=> G
+------------------- :: star_inf
+G |- * <: * dir box
+
+|=> G
+--------------------- :: int
+G |- int <: int => *
+
+G |- A => k
+-------------------------------- :: bot
+G |- bot <: bot <= A
+
+G |- A => k1
+G , x : A |- B => k2
+G , x : A |- e1 <: e2 <= B
+---------------------------------------------------- :: abs
+G |- lambda x . e1 <: lambda x . e2 <= pi x : A. B
+
+G |- A1 => k1
+G |- A2 <: A1 => k1
+G , x : A1 |- B1 dir k2
+G , x : A2 |- B1 <: B2 dir k2
+------------------------------------------- :: pi_inf
+G |- pi x : A1. B1 <: pi x : A2. B2 dir k2
+
+mono t
+G |- e1 <: e2 => A
+G |- A . t =>> B
+----------------------- :: app
+G |- e1 t <: e2 t => B
+
+G |- A => k
+G , x : A |- B  <: B => *
+G , x : A |- e1 <: e2 <= B
+% x # e1*
+% x # e2*
+--------------------------------------------------- :: bind
+G |- bind x . e1 <: bind x . e2 <= forall x : A. B
+
+% monotype mu x : t. s
+% G |- t : k
+% G , x : t |- s : t
+% ------------------------------------ :: mu
+% G |- mu x : t. s <: mu x : t. s : t
+
+G |- A => k
+A --> B
+G |- e1 <: e2 <= B
+-------------------------------------------- :: castup
+G |- castup e1 <: castup e2 <= A
+
+G |- B => k
+G |- A -->> B
+G |- e1 <: e2 => A
+--------------------------------------- :: castdn
+G |- castdn e1 <: castdn e2 => B
+
+mono t
+G |- A => k
+G |- t <= A
+G |- [t/x] B <: C => *
+G , x : A |- B => *
+------------------------------- :: forall_l
+G |- forall x : A. B <: C => *
+
+G |- B => k
+G |- A => *
+G , x : B |- A <: C => *
+------------------------------- :: forall_r
+G |- A <: forall x : B. C => *
+
+G |- A1 <: A2 => k
+G |- A2 <: A1 => k
+G , x : A1 |- B <: C => *
+----------------------------------------------- :: forall
+G |- forall x : A1. B <: forall x : A2. C => *
+
+G |- e1 <: e2 <= A1
+G |- A1 <: A2 => k
+G |- A2 <: A1 => k
+------------------------------ :: anno
+G |- e1 : A1 <: e2 : A2 => A1
+
+G |- e1 <: e2 => A
+G |- A  <: B  => k
+------------------- :: sub
+G |- e1 <: e2 <= B

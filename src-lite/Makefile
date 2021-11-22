@@ -1,7 +1,7 @@
 COQ_PROJECT := _CoqProject
 COQ_MAKEFILE := CoqMakefile
 
-SYSTEMS := decl alg
+SYSTEMS := decl alg bidir
 OTT_OUTS   := $(addsuffix _ott.v,${SYSTEMS})
 LNGEN_OUTS := $(addsuffix _inf.v,${SYSTEMS})
 

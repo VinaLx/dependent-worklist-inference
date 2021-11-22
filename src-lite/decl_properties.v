@@ -132,11 +132,11 @@ Proof.
 Qed.
 
 Lemma reduction_subst : forall e1 e2 x v,
-  lc_expr v → e1 ⟶ e2 → [v /' x] e1 ⟶ [v /' x] e2.
+  lc_expr v → e1 ⟶ e2 → [v /_ x] e1 ⟶ [v /_ x] e2.
 Proof.
   intros. induction H0.
   - simpl. constructor. admit. auto.
-  - simpl. replace ([v /' x] e1 ^^ e2) with (([v /' x] e1) ^^ ([v /' x]e2));
+  - simpl. replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2));
      [> constructor; admit| admit].
   - admit.
   - simpl. eauto.
@@ -147,8 +147,8 @@ Admitted.
 Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
   , Γ1 , x : A ,, Γ2 ⊢ e1 <: e2 : B → forall v1 v2
   , Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A
-  → Γ1 ,, ⟦v1 /' x⟧ Γ2 ⊢ [v1 /' x] e1 <: [v2 /' x] e2 : [v1 /' x] B
-  ∧ Γ1 ,, ⟦v1 /' x⟧ Γ2 ⊢ [v2 /' x] e1 <: [v1 /' x] e2 : [v1 /' x] B.
+  → Γ1 ,, ⟦v1 /_ x⟧ Γ2 ⊢ [v1 /_ x] e1 <: [v2 /_ x] e2 : [v1 /_ x] B
+  ∧ Γ1 ,, ⟦v1 /_ x⟧ Γ2 ⊢ [v2 /_ x] e1 <: [v1 /_ x] e2 : [v1 /_ x] B.
 Proof.
   intros * H.
   remember (Γ1, x : A,, Γ2) as Γ.
@@ -156,7 +156,7 @@ Proof.
   pattern Γ, e1, e2, B, H.
   apply usub_mut with
     (P0 := fun c wf => forall Γ2 v1 v2, c = Γ1 , x : A ,, Γ2
-      → Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A → ⊢ Γ1 ,, ⟦v1 /' x⟧ Γ2);
+      → Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A → ⊢ Γ1 ,, ⟦v1 /_ x⟧ Γ2);
     intros; subst; simpl.
   - destruct (x0 == x).
     + admit.
@@ -169,7 +169,7 @@ Proof.
     + admit.
   - split.
     + pick fresh x' and apply s_abs; admit.
-    + apply s_sub with (e_pi ([v2 /' x] A1) ([v1 /' x] B1)) k2.
+    + apply s_sub with (e_pi ([v2 /_ x] A1) ([v1 /_ x] B1)) k2.
       admit.
       * econstructor.
 

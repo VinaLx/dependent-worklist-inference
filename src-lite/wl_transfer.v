@@ -2,10 +2,10 @@ Require Import worklist.
 Require Import decl_worklist.
 Require simplified_ind.
 
-
-Inductive kind_iso : kind → akind → Prop :=
-| kiso_star : kind_iso k_star ak_star
-| kiso_box : kind_iso k_box ak_box
+(*
+Inductive kind_iso : bkind → akind → Prop :=
+| kiso_star : kind_iso bk_star ak_star
+| kiso_box : kind_iso bk_box ak_box
 .
 
 Inductive expr_iso : expr → aexpr → Prop :=
@@ -426,3 +426,4 @@ Proof.
   - admit.
   -
 Admitted.
+*)
