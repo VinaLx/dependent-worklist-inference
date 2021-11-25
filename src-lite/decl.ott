@@ -36,6 +36,8 @@ formula :: formula_ ::=
   | G |- e d A :: M :: bi_typing {{ coq (busub [[G]] [[e]] [[e]] [[d]] [[A]]) }}
   | G |- e : A :: M :: typing    {{ coq (usub [[G]] [[e]] [[e]] [[A]]) }}
   | x # G      :: M :: ctx_fresh {{ coq ([[x]] `notin` ctx_dom [[G]]) }}
+  | x # e *     :: M :: erased_fresh
+    {{ coq ([[x]] `notin` fv_eexpr (erase [[e]])) }}
 
 substitutions
   single e x :: subst
@@ -45,6 +47,8 @@ freevars
 
 embed {{ coq
 
+Require Import erased_ott.
+
 Fixpoint ctx_dom (G : context) : atoms :=
   match G with
   | ctx_nil => {}
@@ -52,6 +56,24 @@ Fixpoint ctx_dom (G : context) : atoms :=
   end
 .
 
+Fixpoint erase (e : expr) : eexpr :=
+  match e with
+  | e_var_f x => ee_var_f x
+  | e_var_b x => ee_var_b x
+  | e_kind k_star => ee_kind ek_star
+  | e_kind k_box  => ee_kind ek_box
+  | e_num n => ee_num n
+  | e_int   => ee_int
+  | e_bot A => ee_bot
+  | e_app f a => ee_app (erase f) (erase a)
+  | e_abs  A (b_anno e B) => ee_abs  (erase e)
+  | e_bind A (b_anno e B) => ee_bind (erase e)
+  | e_pi  A B => ee_pi  (erase A) (erase B)
+  | e_all A B => ee_all (erase A) (erase B)
+  | e_castup A e => ee_castup (erase e)
+  | e_castdn   e => ee_castdn (erase e)
+  end
+.
 }}
 
 defns
@@ -225,8 +247,8 @@ G , x : A1 |- B2 <: B1 : *
 % G , x : A2 |- B1 <: B2 : *
 % G , x : A2 |- B2 <: B1 : *
 G , x : A1 |- e1 <: e2 : B1
-% x # e1*
-% x # e2*
+x # e1*
+x # e2*
 ---------------------------------------------------------------- :: bind
 G |- bind x : A1. e1 : B1 <: bind x : A2. e2 : B2 : forall x : A1. B1
 

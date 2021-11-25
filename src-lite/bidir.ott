@@ -53,6 +53,8 @@ formula :: formula_ ::=
   | judgement  ::   :: judgement
   | G |- e d A :: M :: bi_typing {{ coq (busub [[G]] [[e]] [[e]] [[d]] [[A]]) }}
   | x # G      :: M :: ctx_fresh {{ coq ([[x]] `notin` bctx_dom [[G]]) }}
+  | x # e *    :: M :: erased_fresh
+    {{ coq ([[x]] `notin` fv_eexpr (berase [[e]])) }}
 
 substitutions
   single e x :: subst
@@ -62,6 +64,8 @@ freevars
 
 embed {{ coq
 
+Require Import erased_ott.
+
 Fixpoint bctx_dom (G : bcontext) : atoms :=
   match G with
   | bctx_nil => {}
@@ -69,6 +73,25 @@ Fixpoint bctx_dom (G : bcontext) : atoms :=
   end
 .
 
+Fixpoint berase (e : bexpr) : eexpr :=
+  match e with
+  | be_var_f x => ee_var_f x
+  | be_var_b x => ee_var_b x
+  | be_kind bk_star => ee_kind ek_star
+  | be_kind bk_box  => ee_kind ek_box
+  | be_num n => ee_num n
+  | be_int   => ee_int
+  | be_bot   => ee_bot
+  | be_app f a => ee_app (berase f) (berase a)
+  | be_abs  e  => ee_abs  (berase e)
+  | be_bind e  => ee_bind (berase e)
+  | be_pi  A B => ee_pi  (berase A) (berase B)
+  | be_all A B => ee_all (berase A) (berase B)
+  | be_castup e => ee_castup (berase e)
+  | be_castdn e => ee_castdn (berase e)
+  | be_anno e A => berase e
+  end
+.
 }}
 
 defns
@@ -268,8 +291,8 @@ G |- e1 t <: e2 t => B
 G |- A => k
 G , x : A |- B  <: B => *
 G , x : A |- e1 <: e2 <= B
-% x # e1*
-% x # e2*
+x # e1*
+x # e2*
 --------------------------------------------------- :: bind
 G |- bind x . e1 <: bind x . e2 <= forall x : A. B
 

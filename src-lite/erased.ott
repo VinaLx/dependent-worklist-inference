@@ -1,0 +1,119 @@
+metavar eexprvar, x, y, z ::= {{ repr-locally-nameless }}
+metavar number, n ::= {{ coq nat }}
+
+grammar
+
+ekind, k :: 'ek_' ::= {{ com kind }}
+  | *   :: :: star {{ com type of type }}
+  | box :: :: box  {{ com type of type of type }}
+
+eexpr, e, A, B, C, D, t, s :: 'ee_' ::= {{ com expressions }}
+  | x       :: :: var  {{ com variable }}
+  | k       :: :: kind {{ com type of type }}
+  | n       :: :: num  {{ com integer value }}
+  | int     :: :: int  {{ com integer type }}
+  | bot     :: :: bot  {{ com bottom value }}
+  | e1 e2   :: :: app  {{ com application }}
+  | lambda x     . e :: :: abs  (+ bind x in e +) {{ com abstraction }}
+  | pi     x : A . B :: :: pi   (+ bind x in B +) {{ com dependent product }}
+  | bind   x     . e :: :: bind (+ bind x in e +) {{ com implicit lambda }}
+  | forall x : A . B :: :: all  (+ bind x in B +) {{ com implicit function type }}
+%  | mu     x . e :: :: mu   (+ bind x in e +) {{ com fix point expression }}
+  | castup e :: :: castup {{ com cast up }}
+  | castdn e :: :: castdn {{ com cast down }}
+  | ( e )         :: S :: paren {{ coq ([[e]]) }}
+  | [ e1 / x ] e2 :: M :: subst {{ coq (open_eexpr_wrt_eexpr [[x e2]] [[e1]]) }}
+
+formula :: formula_ ::=
+  | judgement :: :: judgement
+
+substitutions
+  single e x :: subst
+
+freevars
+  eexpr x :: fv
+
+defns
+Monotype :: '' ::=
+
+defn
+mono A :: :: mono_etype :: 'emono_'
+by
+
+----------- :: kind
+mono k
+
+----------- :: var
+mono x
+
+------------- :: int
+mono int
+
+----------- :: lit
+mono n
+
+----------------- :: bot
+mono bot
+
+mono e1
+mono e2
+----------------- :: app
+mono (e1 e2)
+
+mono A
+mono B
+---------------------- :: pi
+mono pi x : A . B
+
+mono e
+-------------------------- :: lambda
+mono lambda x . e
+
+mono e
+------------------------ :: bind
+mono bind x . e
+
+% mono e
+% ---------------------- :: mu
+% mono mu x : A . e
+
+mono e
+---------------------- :: castup
+mono castup e
+
+mono e
+---------------------- :: castdn
+mono castdn e
+
+defns
+Reduce :: '' ::=
+
+defn
+e1 --> e2 :: :: ereduce :: 'er_' {{ com Reduction in Erased Language }}
+by
+
+e1 --> e2
+---------------- :: app
+e1 e3 --> e2 e3
+
+----------------------------------- :: beta
+(lambda x . e1) e2 --> [e2 / x] e1
+
+
+----------------------------------- :: inst
+(bind x . e1) e2 --> e1 e2
+
+% -------------------------------------- :: mu
+% mu x : A. e --> [mu x : A. e / x] e
+
+e1 --> e2
+--------------------------------- :: castdn
+castdn e1 --> castdn e2
+
+
+--------------------------------- :: cast_inst
+castdn (bind x . e) --> castdn e
+
+
+--------------------------------- :: cast_elim
+castdn (castup e) --> e

@@ -1,14 +1,16 @@
-COQ_PROJECT := _CoqProject
+COQ_PROJECT  := _CoqProject
 COQ_MAKEFILE := CoqMakefile
 
-SYSTEMS := decl alg bidir
+OTT_FLAGS := -coq_lngen true -signal_parse_errors true
+
+SYSTEMS := decl alg bidir erased
 OTT_OUTS   := $(addsuffix _ott.v,${SYSTEMS})
 LNGEN_OUTS := $(addsuffix _inf.v,${SYSTEMS})
 
 .PHONY: ott lngen coq clean
 
 %_ott.v : %.ott
-	ott -i $^ -o $@ -coq_lngen true
+	ott -i $^ -o $@ ${OTT_FLAGS}
 	sed -e "/Ott.ott_list_core/d" -i "" $@
 
 ott : ${OTT_OUTS}
@@ -18,6 +20,7 @@ ott : ${OTT_OUTS}
 
 lngen : ${LNGEN_OUTS}
 
+# a hack to force makefile to detect source file changes
 .FILE_LIST : ${LNGEN_OUTS} FORCE
 	ls -1 *.v | sort -s > .FILE_LIST.tmp
 	diff $@ .FILE_LIST.tmp || cp .FILE_LIST.tmp $@
