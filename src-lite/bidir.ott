@@ -154,7 +154,7 @@ defns
 Reduce :: '' ::=
 
 defn
-e1 --> e2 :: :: reduce :: 'r_' {{ com Reduction in Source Language }}
+e1 --> e2 :: :: breduce :: 'br_' {{ com Reduction in Source Language }}
 by
 
 e1 --> e2
@@ -186,7 +186,7 @@ defns
 InContext :: '' ::=
 
 defn
-x : A in G :: :: in_ctx :: 'in_'
+x : A in G :: :: in_bctx :: 'inb_'
 by
 
 ------------------ :: here

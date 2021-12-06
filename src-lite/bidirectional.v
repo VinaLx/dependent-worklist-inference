@@ -1,6 +1,62 @@
 Require Import decl_properties.
 Require Import Program.Tactics.
 Require Import bidir_properties.
+Require Import bidir_elab.
+
+Fixpoint to_bexpr (e : expr) : bexpr :=
+  match e with
+  | e_var_f x => be_var_f x
+  | e_var_b x => be_var_b x
+  | e_kind k_star => be_kind bk_star
+  | e_kind k_box => be_kind bk_box
+  | e_num n => be_num n
+  | e_int => be_int
+  | e_bot A => be_anno be_bot (to_bexpr A)
+  | e_app f a => be_app (to_bexpr f) (to_bexpr a)
+  | e_abs  A (b_anno e B) => be_anno (be_abs  (to_bexpr e)) (be_pi  (to_bexpr A) (to_bexpr B))
+  | e_bind A (b_anno e B) => be_anno (be_bind (to_bexpr e)) (be_all (to_bexpr A) (to_bexpr B))
+  | e_pi  A B => be_pi  (to_bexpr A) (to_bexpr B)
+  | e_all A B => be_all (to_bexpr A) (to_bexpr B)
+  | e_castup A e => be_anno (be_castup (to_bexpr e)) (to_bexpr A)
+  | e_castdn e => be_castdn (to_bexpr e)
+  end
+.
+
+Fixpoint to_bcontext (Γ : context) : bcontext :=
+  match Γ with
+  | ctx_nil => bctx_nil
+  | ctx_cons Γ' x A => bctx_cons (to_bcontext Γ') x (to_bexpr A)
+  end
+.
+
+Lemma in_context_elab : forall Γ x A,
+    x :_ A ∈ Γ -> ⊢ Γ -> forall Γ', wf_context_elab Γ' Γ -> exists A' k, in_bctx x A' Γ' /\ busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽.
+Proof.
+  intros * In Wf.
+  induction In; intros.
+  - inversion H1; subst. exists A', k.
+    split. eapply inb_here. admit. admit.
+Admitted.
+
+
+Theorem bidir_complete : forall Γ e1 e2 A
+  , Γ ⊢ e1 <: e2 : A
+  -> busub_elab
+      (to_bcontext Γ) (to_bexpr e1) (to_bexpr e2) d_infer (to_bexpr A)
+      Γ e1 e2 A.
+Proof.
+  intros. pattern Γ, e1, e2, A, H.
+  apply usub_mut with
+    (P0 := fun Γ (_ : ⊢ Γ) => wf_context_elab (to_bcontext Γ) Γ); intros.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - simpl. eapply bse_anno.
+Admitted.
+
+
+
 
 (*
 Theorem bidir_sound : forall Γ e1 e2 A d,
