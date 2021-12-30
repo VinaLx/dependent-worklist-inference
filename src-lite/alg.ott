@@ -10,23 +10,21 @@ akind, k :: 'ak_' ::=
   | box :: :: box
   | kx  :: :: ex
 
-abody, ab :: 'ab_' ::=
-  | e : A :: :: anno
-
 aexpr, e, A, B, C, D, t, s :: 'ae_' ::=
   | x  :: :: var
   | k  :: :: kind
   | ex :: :: ex
   | n  :: :: num
-  | int     :: :: int
-  | bot : A :: :: bot
-  | e1 e2   :: :: app
-  | lambda x : A . ab :: :: abs  (+ bind x in ab +)
-  | pi     x : A . B  :: :: pi   (+ bind x in B  +)
-  | bind   x : A . ab :: :: bind (+ bind x in ab +)
-  | forall x : A . B  :: :: all  (+ bind x in B  +)
-  | castup [ A ] e :: :: castup
-  | castdn       e :: :: castdn
+  | int :: :: int
+  | bot :: :: bot
+  | e1 e2 :: :: app
+  | lambda x     . e :: :: abs  (+ bind x in e +)
+  | pi     x : A . B :: :: pi   (+ bind x in B +)
+  | bind   x     . e :: :: bind (+ bind x in e +)
+  | forall x : A . B :: :: all  (+ bind x in B +)
+  | castup e :: :: castup
+  | castdn e :: :: castdn
+  | e : A    :: :: anno
   | ( e )         :: S :: paren {{ coq ([[e]]) }}
   | [ e1 / x ] e2 :: M :: subst {{ coq (open_aexpr_wrt_aexpr [[x e2]] [[e1]]) }}
 
@@ -115,23 +113,23 @@ defn
 mono A :: :: mono_atype :: 'amono_'
 by
 
------------ :: kind
+--------- :: kind
 mono k
 
------------ :: ex
+--------- :: ex
 mono ex
 
------------ :: var
+--------- :: var
 mono x
 
-------------- :: int
+--------- :: int
 mono int
 
------------ :: lit
+--------- :: lit
 mono n
 
------------------ :: bot
-mono bot : A
+--------- :: bot
+mono bot
 
 mono e1
 mono e2
@@ -140,28 +138,32 @@ mono (e1 e2)
 
 mono A
 mono B
----------------------- :: pi
+------------------ :: pi
 mono pi x : A . B
 
 mono e
--------------------------- :: lambda
-mono lambda x : A . e : B
+------------------ :: lambda
+mono lambda x . e
 
 mono e
------------------------- :: bind
-mono bind x : A . e : B
+------------------ :: bind
+mono  bind  x . e
 
 % mono e
 % ---------------------- :: mu
 % mono mu x : A . e
 
 mono e
----------------------- :: castup
-mono castup [A] e
+-------------- :: castup
+mono castup e
 
 mono e
----------------------- :: castdn
+-------------- :: castdn
 mono castdn e
+
+mono e
+-------------- :: anno
+mono e : A
 
 defns
 Reduce :: '' ::=
@@ -174,12 +176,15 @@ e1 --> e2
 ---------------- :: app
 e1 e3 --> e2 e3
 
--------------------------------------------- :: beta
-(lambda x : A. e1 : B) e2 --> [e2 / x] e1
+------------------------------------------------------- :: beta
+((lambda x . e1) : pi x : A. B) e2 --> [e2 : A / x] e1
+
+---------------------------------------------------------- :: beta_anno
+((lambda x. e1) : pi x : A. B) (e2 : C) --> [e2 : C / x] e2
 
 mono e
--------------------------------------------- :: inst
-(bind x : A. e1 : B) e2 --> ([e / x] e1) e2
+--------------------------------------------------------- :: inst
+((bind x . e1) : forall x : A. B) e2 --> ([e / x] e1) e2
 
 % -------------------------------------- :: mu
 % mu x : A. e --> [mu x : A. e / x] e
@@ -190,7 +195,7 @@ castdn e1 --> castdn e2
 
 mono e
 -------------------------------------------------------- :: cast_inst
-castdn (bind x : A. e1 : B) --> castdn ([e / x] e1)
+castdn ((bind x. e1) : forall x : A. B) --> castdn ([e / x] e1)
 
 -------------------------------- :: cast_elim
-castdn (castup [B] e) --> e
+castdn ((castup e) : A) --> e

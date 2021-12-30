@@ -120,21 +120,26 @@ Notation "[ v /′ x ] e" :=
 Notation "⋆′" :=
   (ae_kind ak_star) (at level 0, no associativity) : aexpr_scope.
 
-Notation "◻′" := (ae_kind ak_box) (at level 0, no associativity) : aexpr_scope.
+Notation "◻′" :=
+  (ae_kind ak_box) (at level 0, no associativity) : aexpr_scope.
 
-Notation "⧼ k ⧽′" := (ae_kind k) (at level 0, no associativity) : aexpr_scope.
+Notation "⧼ k ⧽′" :=
+  (ae_kind k) (at level 0, no associativity) : aexpr_scope.
 
-Notation "⧼ `^ x ⧽" := (ae_kind (ak_ex x)) (at level 0, no associativity) : aexpr_scope.
+Notation "⧼ `^ x ⧽" :=
+  (ae_kind (ak_ex x)) (at level 0, no associativity) : aexpr_scope.
 
-Notation "`^ x" := (ae_ex x) (at level 0, x at level 0, no associativity) : aexpr_scope.
+Notation "`^ x" :=
+  (ae_ex x) (at level 0, x at level 0, no associativity) : aexpr_scope.
 
-Notation "λ′ A , e : B" :=
-  (ae_abs A (ab_anno e B))
-    (at level 50, A at level 50, e at level 50, no associativity) : aexpr_scope.
+Notation "λ′ e" :=
+  (ae_abs e) (at level 50, no associativity) : aexpr_scope.
 
-Notation "Λ′ A , e : B" :=
-  (ae_bind A (ab_anno e B))
-    (at level 50, A at level 50, e at level 50, no associativity) : aexpr_scope.
+Notation "Λ′ e" :=
+  (ae_bind e) (at level 50, no associativity) : aexpr_scope.
+
+Notation "e ::′ A" :=
+  (ae_anno e A) (at level 50, no associativity) : aexpr_scope.
 
 Open Scope work_scope.
 Open Scope worklist_scope.

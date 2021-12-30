@@ -29,6 +29,9 @@ Notation "◻'" := (be_kind bk_box) (at level 0, no associativity) : bexpr_scope
 Notation "⧼ k ⧽'" := (be_kind k)
   (at level 0, no associativity) : bexpr_scope.
 
+Notation "e ::' A" := (be_anno e A)
+  (at level 50, no associativity) : bexpr_scope.
+
 Notation "G ⊢ e1 <: e2 ⇒ A" := (busub G e1 e2 d_infer A)
     (at level 65, e1 at level 50, e2 at level 50, no associativity) : type_scope.
 
