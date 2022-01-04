@@ -181,6 +181,49 @@ Fixpoint subst_k (k : akind) (x : var) (Γ : worklist) : worklist :=
 where "⟦ k /′ ⧼ x ⧽ ⟧ G" := (subst_k k x G) : worklist_scope
 .
 
+Inductive kind_syn_eq : akind → akind → Prop :=
+| kseq_star : kind_syn_eq ak_star ak_star
+| kseq_box  : kind_syn_eq ak_box  ak_box
+| kseq_ex_l : forall x k, kind_syn_eq (ak_ex x) k
+| kseq_ex_r : forall x k, kind_syn_eq k (ak_ex x)
+.
+
+Reserved Notation "e1 ≃ e2" (at level 65, e2 at level 50, no associativity).
+Inductive syn_eq : aexpr → aexpr → Prop :=
+| seq_ex_l : forall x e, mono_atype e → `^x ≃ e
+| seq_ex_r : forall x e, mono_atype e → e ≃ `^x
+| seq_var  : forall x, `′x ≃ `′x
+| seq_kind : forall k1 k2, kind_syn_eq k1 k2 → ⧼k1⧽′ ≃ ⧼k2⧽′
+| seq_num  : forall n, ae_num n ≃ ae_num n
+| seq_int  : ae_int ≃ ae_int
+| seq_bot  : ae_bot ≃ ae_bot
+| seq_app : forall f1 f2 a1 a2
+  , f1 ≃ f2
+  → a1 ≃ a2
+  → ae_app f1 a2 ≃ ae_app f2 a2
+| seq_abs : forall L e1 e2
+  , (forall x, x `notin` L → e1 ^`′ x ≃ e2 ^`′ x)
+  → ae_abs e1 ≃ ae_abs e2
+| seq_pi : forall L A1 A2 B1 B2
+  , A1 ≃ A2
+  → (forall x, x `notin` L → B1 ^`′ x ≃ B2 ^`′ x)
+  → ae_pi A1 B1 ≃ ae_pi A2 B2
+| seq_bind : forall L e1 e2
+  , (forall x, x `notin` L → e1 ^`′ x ≃ e2 ^`′ x)
+  → ae_bind e1 ≃ ae_bind e2
+| seq_all : forall L A1 A2 B1 B2
+  , A1 ≃ A2
+  → (forall x, x `notin` L → B1 ^`′ x ≃ B2 ^`′ x)
+  → ae_all A1 B1 ≃ ae_all A2 B2
+| seq_castup : forall e1 e2 , e1 ≃ e2 → ae_castup e1 ≃ ae_castup e2
+| seq_castdn : forall e1 e2 , e1 ≃ e2 → ae_castdn e1 ≃ ae_castdn e2
+| seq_anno : forall e1 e2 A1 A2
+  , e1 ≃ e2 → A1 ≃ A2
+  → e1 ::′ A1 ≃ e2 ::′ A2
+where "e1 ≃ e2" := (syn_eq e1 e2) : type_scope
+.
+
+
 Reserved Notation "⪧′ wl" (at level 65, no associativity).
 Inductive wl_step : worklist -> Prop :=
 | st_nil : ⪧′ wl_nil
@@ -205,8 +248,7 @@ Inductive wl_step : worklist -> Prop :=
   , (forall k, k `notin` L -> ⪧′ Γ ,?′ b ,′ ⧼^k ⧽ ⊨′ A ⇐′ ⧼`^k⧽)
   → ⪧′ Γ ⊨′ b ⊢? ae_bot <: ae_bot ⇐′ A
 | st_app : forall Γ f1 f2 a1 a2 c
-  , mono_atype a1 → mono_atype a2
-  → ⪧′ Γ ⊨′ f1 <: f2 ⇒′ ⦃ ↑′0 ⋅ a1 & a2 ⇒′ c ⦄
+  , ⪧′ Γ ⊨′ f1 <: f2 ⇒′ ⦃ ↑′0 ⋅ a1 & a2 ⇒′ c ⦄
   -> ⪧′ Γ ⊨′ ae_app f1 a1 <: ae_app f2 a2 ⇒′ c
 | st_abs : forall L Γ b e1 e2 A B
   , (forall x, x `notin` L → forall k1, k1 `notin` add x L
@@ -294,6 +336,7 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ⊨′ ae_all A B ⋅ e1 & e2 ⇒′ c
 | st_iapp_pi : forall L Γ A B e1 e2 c
   , (forall x, x `notin` L → forall k, k `notin` add x L
+    → mono_atype e1 → mono_atype e2 → e1 ≃ e2
     → ⪧′ Γ ⫢′ c $′ B ^^′ e1 ⊨′ e1 <: e2 ⇐′ A ⊨′ e2 <: e1 ⇐′ A
       ,′ ⧼^k⧽ ⊨′ x :?′ A ⊢? B ⇐′ ⧼`^k⧽)
   → ⪧′ Γ ⊨′ ae_pi A B ⋅ e1 & e2 ⇒′ c
