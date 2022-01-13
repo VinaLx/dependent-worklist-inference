@@ -2,9 +2,9 @@ Require Import worklist.
 Require Import decl_worklist.
 Require Import wl_transfer.
 
-(*
+
 Theorem wl_sound : forall Γ',
-    ⪧′ Γ' → exists Γ, Γ' ⟿ Γ ∧ ⪧ Γ.
+    ⪧′ Γ' → exists Γ Θ, nil ⊩ Γ' ⟿ Γ ⫣ Θ ∧ ⪧ Γ.
 Proof.
   intros * H.
   induction H; intros.
@@ -15,4 +15,3 @@ Proof.
   (* num *)
   - admit.
 Admitted.
-*)
