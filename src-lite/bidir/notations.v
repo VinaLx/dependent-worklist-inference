@@ -1,4 +1,4 @@
-Require Export bidir_inf.
+Require Export bidir.ln_inf.
 Require Export Coq.Unicode.Utf8.
 
 Declare Scope bexpr_scope.

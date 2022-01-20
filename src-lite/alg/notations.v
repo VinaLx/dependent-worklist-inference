@@ -1,4 +1,4 @@
-Require Export alg_inf.
+Require Export alg.ln_inf.
 Require Export Coq.Unicode.Utf8.
 
 Notation "e1 ⟶′ e2" := (areduce e1 e2) (at level 65) : type_scope.

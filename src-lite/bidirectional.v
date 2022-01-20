@@ -1,7 +1,7 @@
-Require Import decl_properties.
+Require Import decl.properties.
 Require Import Program.Tactics.
-Require Import bidir_properties.
-Require Import bidir_elab.
+Require Import bidir.properties.
+Require Import bidir.elaboration.
 
 Fixpoint to_bexpr (e : expr) : bexpr :=
   match e with

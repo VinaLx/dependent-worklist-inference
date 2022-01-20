@@ -1,4 +1,4 @@
-Require Export bidir_notations.
+Require Export bidir.notations.
 Require Import Coq.Program.Equality.
 
 Scheme Induction for busub Sort Prop

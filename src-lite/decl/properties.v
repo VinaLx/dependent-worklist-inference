@@ -1,4 +1,4 @@
-Require Export decl_notations.
+Require Export decl.notations.
 Require Export Coq.Program.Equality.
 
 Definition wf_dom : forall {Γ}, ⊢ Γ -> atoms.

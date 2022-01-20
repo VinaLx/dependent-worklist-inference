@@ -1,4 +1,4 @@
-Require Export alg_notations.
+Require Export alg.notations.
 
 Notation "k $′ e" :=
   (open_worklist_wrt_aexpr k e)

@@ -1,4 +1,4 @@
-Require Export bidir_notations.
+Require Export bidir.notations.
 
 Notation "k $ e" :=
   (open_dworklist_wrt_bexpr k e)

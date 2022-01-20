@@ -1,4 +1,4 @@
-Require Export decl_notations.
+Require Export decl.notations.
 
 Lemma lc_body_e : forall e A,
     lc_body (b_anno e A) -> lc_expr e.

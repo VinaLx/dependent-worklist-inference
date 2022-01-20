@@ -4,19 +4,19 @@ COQ_MAKEFILE := CoqMakefile
 OTT_FLAGS := -coq_lngen true -signal_parse_errors true
 
 SYSTEMS := decl alg bidir erased
-OTT_OUTS   := $(addsuffix _ott.v,${SYSTEMS})
-LNGEN_OUTS := $(addsuffix _inf.v,${SYSTEMS})
+OTT_OUTS   := $(addsuffix /ott.v,${SYSTEMS})
+LNGEN_OUTS := $(addsuffix /ln_inf.v,${SYSTEMS})
 
 .PHONY: ott lngen coq clean
 
-%_ott.v : %.ott
+%/ott.v : %/language.ott
 	ott -i $^ -o $@ ${OTT_FLAGS}
 	sed -e "/Ott.ott_list_core/d" -i "" $@
 
 ott : ${OTT_OUTS}
 
-%_inf.v : %_ott.v
-	lngen --coq $@ --coq-ott $*_ott $*.ott
+%/ln_inf.v : %/ott.v
+	lngen --coq $@ --coq-ott $*.ott $*/language.ott
 
 lngen : ${LNGEN_OUTS}
 
@@ -36,4 +36,4 @@ coq : ${COQ_MAKEFILE}
 
 clean :
 	${MAKE} -f ${COQ_MAKEFILE} clean
-	rm *_inf.v *_ott.v ${COQ_MAKEFILE} ${COQ_MAKEFILE}.conf .FILE_LIST
+	rm */ln_inf.v */ott.v ${COQ_MAKEFILE} ${COQ_MAKEFILE}.conf .FILE_LIST

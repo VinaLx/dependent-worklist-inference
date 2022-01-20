@@ -1,4 +1,4 @@
-Require Import bidir_notations.
+Require Import bidir.notations.
 
 Lemma mono_lc_bexpr : forall e, mono_btype e → lc_bexpr e.
 Proof.

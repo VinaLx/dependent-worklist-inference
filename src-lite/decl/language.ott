@@ -47,7 +47,7 @@ freevars
 
 embed {{ coq
 
-Require Import erased_ott.
+Require Import erased.ott.
 
 Fixpoint ctx_dom (G : context) : atoms :=
   match G with

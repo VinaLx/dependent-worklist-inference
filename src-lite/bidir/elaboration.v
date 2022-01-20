@@ -1,6 +1,6 @@
-Require Import decl_notations.
-Require Import bidir_notations.
-Require Import erased_ott.
+Require Import decl.notations.
+Require Import bidir.notations.
+Require Import erased.ott.
 
 Definition to_k (bk : bkind) : kind :=
   match bk with
