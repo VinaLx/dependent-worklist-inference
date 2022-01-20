@@ -21,6 +21,9 @@ Notation "e ^`' x" := (open_bexpr_wrt_bexpr e (be_var_f x))
 Notation "e1 ^^' e2" := (open_bexpr_wrt_bexpr e1 e2)
   (at level 48, left associativity) : bexpr_scope.
 
+Notation "e \`' x " := (close_bexpr_wrt_bexpr x e)
+  (at level 48, left associativity) : bexpr_scope.
+
 Notation "⋆'" := (be_kind bk_star)
   (at level 0, no associativity) : bexpr_scope.
 

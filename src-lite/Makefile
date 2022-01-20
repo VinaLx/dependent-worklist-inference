@@ -22,14 +22,14 @@ lngen : ${LNGEN_OUTS}
 
 # a hack to force makefile to detect source file changes
 .FILE_LIST : ${LNGEN_OUTS} FORCE
-	ls -1 *.v | sort -s > .FILE_LIST.tmp
+	tree . -if | grep -E "v$$" | cut -c3- | sort -s > .FILE_LIST.tmp
 	diff $@ .FILE_LIST.tmp || cp .FILE_LIST.tmp $@
 	rm .FILE_LIST.tmp
 
 FORCE:
 
 ${COQ_MAKEFILE} : ${COQ_PROJECT} .FILE_LIST ${LNGEN_OUTS}
-	coq_makefile -o $@ -f ${COQ_PROJECT} *.v
+	tree . -if | grep -E "v$$" | cut -c3- | xargs coq_makefile -o $@ -f ${COQ_PROJECT}
 
 coq : ${COQ_MAKEFILE}
 	${MAKE} -f ${COQ_MAKEFILE}

@@ -1,6 +1,7 @@
 Require Import worklist.
 Require Import decl_worklist.
-Require Import wl_transfer.
+Require Import transfer.syntax.
+Require Import transfer.properties.
 
 
 Theorem wl_sound : forall Γ',

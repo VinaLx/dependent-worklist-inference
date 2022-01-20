@@ -1,9 +1,7 @@
-Require Import worklist.
-Require Import decl_worklist.
-Require simplified_ind.
+Require Export worklist.
+Require Export decl_worklist.
 Require Import lc.
-Require Import Program.Equality.
-Require Import list_properties.
+
 
 (*
 Inductive kind_iso : bkind → akind → Prop :=
@@ -113,9 +111,24 @@ Inductive lc_sse : ss_entry → Prop :=
 | lc_sse_kv : forall k, lc_sse (sse_kv k)
 .
 
+Definition fv_sse (e : ss_entry) : atoms :=
+  match e with
+  | sse_v A => fv_bexpr A
+  | sse_ex A e => fv_bexpr A `union` fv_bexpr e
+  | sse_kv k => {}
+  end
+.
+
 Hint Constructors lc_sse : core.
 
 Definition subst_set := list (var * ss_entry).
+
+Fixpoint fv_ss (s : subst_set) : atoms :=
+  match s with
+  | nil => {}
+  | pair x e :: s' => fv_sse e `union` fv_ss s'
+  end
+.
 
 Notation ": A !" :=
   (sse_v A) (at level 52, A at level 50, no associativity).
@@ -213,11 +226,11 @@ Inductive inst_expr : subst_set → aexpr → bexpr → Prop :=
   , inst_expr Θ A' A
   → (forall x, x `notin` L → inst_expr Θ (B' ^`′ x) (B ^`' x))
   → inst_expr Θ (ae_pi A' B') (be_pi A B)
-| inst_all : forall L Θ A' A B' B
+| inste_all : forall L Θ A' A B' B
   , inst_expr Θ A' A
   → (forall x, x `notin` L → inst_expr Θ (B' ^`′ x) (B ^`' x))
   → inst_expr Θ (ae_all A' B') (be_all A B)
-| inst_anno : forall Θ e' e A' A
+| inste_anno : forall Θ e' e A' A
   , inst_expr Θ e' e → inst_expr Θ A' A
   → inst_expr Θ (e' ::′ A') (e ::' A)
 where "T ⊩ e1 ⇝ e2" := (inst_expr T e1 e2) : type_scope
@@ -310,314 +323,3 @@ Hint Constructors inst_expr inst_obind inst_work inst_wl : core.
 
 Definition transfer' (Γ' : worklist) (Γ : dworklist) : Prop :=
   exists Θ, inst_wl nil Γ' Γ Θ.
-
-Hint Extern 2 (_ = _) => simpl; congruence : core.
-
-Lemma inst_e_det : forall e' Θ e1,
-  uniq Θ → Θ ⊩ e' ⇝ e1 → forall e2, Θ ⊩ e' ⇝ e2 → e1 = e2.
-Proof.
-  intros * Uniq H1.
-  induction H1; intros e2 H2; inversion H2; subst; auto;
-  (* solving all the binds with binds_unique in metalib *)
-  try match goal with
-  | H1 : binds ?x ?e1 ?c , H2 : binds ?x ?e2 ?c |- _ = _ =>
-    let E := fresh "E" in
-      assert (e1 = e2) as E by (eapply binds_unique; eauto);
-      inversion E; now subst
-  end;
-
-  repeat match goal with
-  (* basic inductive cases *)
-  | H1 : _ ⊩ ?e ⇝ ?e1 , H2 : _ ⊩ ?e ⇝ ?e2 |- _ =>
-      assert (e1 = e2) by auto; clear H1 H2
-  (* inductive cases with locally nameless mess *)
-  | H1 : forall x, x `notin` ?L1 → _ ⊩ _ ⇝ ?e1 ^`' x
-  , H2 : forall x, x `notin` ?L2 → _ ⊩ _ ⇝ ?e2 ^`' x
-    |- _ => pick fresh x for
-      (L1 `union` L2 `union` fv_bexpr e1 `union` fv_bexpr e2);
-         assert (e1 ^`' x = e2 ^`' x) by eauto;
-         assert (e1 = e2) by (eapply open_bexpr_wrt_bexpr_inj; eauto)
-  end;
-  congruence.
-Qed.
-
-Lemma inst_wl_split : forall Γ1' Γ2' Γ Θ Θ'
-  , Θ ⊩ Γ1' ⫢′ Γ2' ⟿ Γ ⫣ Θ'
-  → exists Γ1 Γ2 Θ0
-    , Γ = Γ1 ⫢ Γ2
-    ∧ Θ  ⊩ Γ1' ⟿ Γ1 ⫣ Θ0
-    ∧ Θ0 ⊩ Γ2' ⟿ Γ2 ⫣ Θ'.
-Proof.
-  induction Γ2'; simpl; intros.
-  - exists Γ, dwl_nil, Θ'; simpl; auto.
-  - inversion H; subst.
-    pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
-    exists Γ1, (Γ2 ⊨ w0), Θ0. repeat split; eauto.
-  - destruct b; inversion H; subst.
-    + pose proof (IHΓ2' _ _ _ H4) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
-      exists Γ1, (Γ2 ,′' x : A0), Θ0.
-      subst. repeat split; auto.
-    + pose proof (IHΓ2' _ _ _ H5) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
-      exists Γ1, Γ2, Θ0.
-      subst. repeat split; auto.
-    + pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
-      exists Γ1, Γ2, Θ0.
-      subst. repeat split; auto.
-Qed.
-
-Scheme wl_mut   := Induction for worklist Sort Prop
-  with work_mut := Induction for work     Sort Prop.
-
-Scheme winst_mut   := Induction for inst_work Sort Prop
-  with wlinst_mut := Induction for inst_wl   Sort Prop.
-
-Lemma inst_wl_ss_extend : forall Θ Γ' Γ Θ'
-  , Θ ⊩ Γ' ⟿ Γ ⫣ Θ'
-  → exists Θ0, Θ ;; Θ0 = Θ'.
-Proof.
-  intros * H.
-  pattern Θ, Γ', Γ, Θ', H.
-  apply wlinst_mut with
-    (P := fun Θ w' w Θ' (_ : Θ ⊩ w' ⇝′ w ⫣ Θ') => exists Θ0, Θ ;; Θ0 = Θ');
-    intros.
-
-  - now exists nil.
-  - now exists nil.
-  - pick fresh x. eauto.
-  - pick fresh x. eauto.
-  - pick fresh x. eauto.
-  - now exists nil.
-
-  - destruct H0. destruct H1. subst. now exists (x ;; x0).
-  - destruct H0. subst. now exists (x0; x : A !).
-  - destruct H0. subst. now exists (x0; x ≔ ⧼k⧽).
-  - destruct H0. subst. now exists (x0; x : A ≔ e).
-Qed.
-
-Lemma inst_w_ss_extend : forall Θ w' w Θ'
-  , Θ ⊩ w' ⇝′ w ⫣ Θ'
-  → exists Θ0, Θ ;; Θ0 = Θ'.
-Proof.
-  induction 1; solve
-    [now exists nil
-    | pick fresh x; eauto using inst_wl_ss_extend].
-Qed.
-
-Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
-  , Θ1 ;; Θ2 ⊩ e' ⇝ e → wf_ss (Θ1 ;; Θ' ;; Θ2)
-  → Θ1 ;; Θ' ;; Θ2 ⊩ e' ⇝ e.
-Proof.
-  intros * H.
-  dependent induction H; intros; eauto 4.
-Qed.
-
-#[local]
-Hint Resolve inst_e_weakening : inst_weakening.
-
-Lemma inst_ob_weakening : forall Θ1 Θ2 Θ' ob' ob,
-  Θ1 ;; Θ2 ⊩ ob' ⇝? ob → Θ1 ;; Θ' ;; Θ2 ⊩ ob' ⇝? ob.
-Proof.
-  induction 1; eauto.
-Qed.
-
-#[local]
-Hint Resolve inst_ob_weakening : inst_weakening.
-
-Lemma wf_ss_unapp : forall xs ys,
-    wf_ss (xs ;; ys) → wf_ss xs.
-Proof.
-  induction ys; intros.
-  - assumption.
-  - inversion H; auto.
-Qed.
-
-Lemma wf_ss_uncons : forall xs x,
-    wf_ss (x :: xs) → wf_ss xs.
-Proof.
-  destruct x; inversion 1; auto.
-Qed.
-
-
-Hint Immediate wf_ss_unapp wf_ss_uncons : inst_weakening.
-
-Ltac clear_app_suffix_impl :=
-  match goal with
-  | H : ?xs = ?ys ++ ?xs |- _ =>
-      assert (ys = nil) as -> by
-        now apply app_nil_invert in H
-  | H : ?ys ++ ?xs = ?xs |- _ =>
-      symmetry in H
-  | H : ?ys ++ ?xs = ?zs ++ ?xs |- _ =>
-      apply app_inj_l in H
-  | H : ?ys1 ++ ?ys2 ++ ?xs = ?zs ++ ?xs |- _ =>
-      rewrite (app_assoc ys1 ys2 xs) in H
-  | H : ?zs ++ ?xs = ?ys1 ++ ?ys2 ++ ?xs |- _ =>
-      symmetry in H
-  | H : ?x :: ?ys ++ ?xs = ?zs ++ ?xs |- _ =>
-      rewrite <- (cons_app_assoc _ x ys xs) in H;
-      clear_app_suffix_impl
-  end; simpl in *
-.
-
-Ltac clear_app_suffix :=
-  repeat progress clear_app_suffix_impl.
-
-Ltac simplify_list_eq :=
-  repeat (subst || clear_app_suffix);
-  repeat rewrite <- app_assoc in *;
-  simpl in *.
-
-Ltac conclude_ss_extend_impl :=
-  let process t1 t2 tac :=
-    let t3 := fresh "Θ" in
-    let E  := fresh "E" in
-    lazymatch t2 with
-    (* t2 is already an extension of t1 *)
-    | t1 ;; ?t => fail
-    | _ =>
-        lazymatch goal with
-        (* the equality we want to conclude already exists *)
-        | _ : t1 ;; ?t = t2 |- _ => fail
-        (* doing actual stuff *)
-        | _ => assert (exists t, t1 ;; t = t2) as [t3 E] by tac
-        end
-    end
-  in
-  match goal with
-  | H : ?t1 ⊩ _ ⟿ _ ⫣ ?t2 |- _ =>
-      process t1 t2 ltac:(eapply inst_wl_ss_extend; eassumption)
-  | H : ?t1 ⊩ _ ⇝′ _ ⫣ ?t2 |- _ =>
-      process t1 t2 ltac:(eapply inst_w_ss_extend; eassumption)
-  end
-.
-
-Ltac conclude_ss_extend :=
-  repeat conclude_ss_extend_impl.
-
-Lemma inst_wl_weakening : forall Θ1 Θ2 Θ3 Γ' Γ
-  , Θ1 ;; Θ2 ⊩ Γ' ⟿ Γ ⫣ Θ1 ;; Θ2 ;; Θ3
-  → forall Θ', wf_ss (Θ1 ;; Θ' ;; Θ2 ;; Θ3)
-  → Θ1 ;; Θ' ;; Θ2 ⊩ Γ' ⟿ Γ ⫣ Θ1 ;; Θ' ;; Θ2 ;; Θ3.
-Proof.
-  intros * H.
-  (* manual dependent mutual induction *)
-  remember (Θ1 ;; Θ2 ;; Θ3) as Θ'.
-  remember (Θ1 ;; Θ2) as Θ.
-  generalize dependent Θ3;
-  generalize dependent Θ2;
-  generalize dependent Θ1.
-  pattern Θ, Γ', Γ, Θ', H.
-  apply wlinst_mut with
-    (P := fun Θ w' w Θ0 (_ : Θ ⊩ w' ⇝′ w ⫣ Θ0) =>
-      forall Θ1 Θ2 Θ3 Θ', Θ = Θ1 ;; Θ2 → Θ0 = Θ1 ;; Θ2 ;; Θ3
-      → wf_ss (Θ1 ;; Θ' ;; Θ2 ;; Θ3)
-      → Θ1 ;; Θ' ;; Θ2 ⊩ w' ⇝′ w ⫣ Θ1 ;; Θ' ;; Θ2 ;; Θ3);
-    intros; subst.
-
-  (* inst_w *)
-  - clear_app_suffix; eauto 6 with inst_weakening.
-  - clear_app_suffix; eauto 6 with inst_weakening.
-  - eauto with inst_weakening.
-  - eauto with inst_weakening.
-  - eauto with inst_weakening.
-
-  (* inst_wl *)
-  - clear_app_suffix. auto.
-  - conclude_ss_extend. simplify_list_eq.
-    eapply instwl_cons.
-    + eauto with inst_weakening.
-    + replace (Θ1;; Θ'1;; Θ2;; Θ0;; Θ4) with
-        (Θ1;; Θ'1;; (Θ2;; Θ0);; Θ4) by
-        now repeat rewrite <- app_assoc.
-    rewrite (app_assoc Θ0 Θ2 (Θ1 ;; Θ'1)).
-    apply H1; eauto 4; rewrite <- app_assoc; auto.
-  - conclude_ss_extend; simplify_list_eq.
-    inversion H1; subst; constructor; auto.
-    + rewrite app_assoc; apply inst_e_weakening;
-      now rewrite <- app_assoc.
-  - conclude_ss_extend; simplify_list_eq.
-    inversion H1; subst. constructor; auto.
-  - conclude_ss_extend; simplify_list_eq.
-    inversion H1; subst. constructor; auto.
-    + rewrite app_assoc; apply inst_e_weakening;
-       now rewrite <- app_assoc.
-Qed.
-
-Hint Resolve inst_wl_weakening : inst_weakening.
-
-Lemma inst_w_weakening : forall Θ1 Θ2 Θ3 w' w
-  , Θ1 ;; Θ2 ⊩ w' ⇝′ w ⫣ Θ1 ;; Θ2 ;; Θ3
-  → forall Θ', wf_ss (Θ1;; Θ';; Θ2 ;; Θ3)
-  → Θ1 ;; Θ' ;; Θ2 ⊩ w' ⇝′ w ⫣ Θ1 ;; Θ' ;; Θ2 ;; Θ3.
-Proof.
-  intros * H.
-  dependent induction H; intros;
-    clear_app_suffix; eauto 6 with inst_weakening.
-Qed.
-
-
-Lemma inst_e_rev_subst : forall v' v x e'
-  , lc_aexpr e' → forall e0 Θ, x `notin` fv_bexpr e0
-  → Θ ⊩ [v' /′ x] e' ⇝ e0 → Θ ⊩ v' ⇝ v
-  → exists e, [v /' x] e = e0 ∧ Θ ⊩ e' ⇝ e.
-Proof.
-  intros * Lc.
-  induction Lc; simpl; intros * Fr He Hv.
-  - exists (`' x0). simpl.
-    unfold eq_dec in *. destruct (EqDec_eq_of_X x0 x).
-    + assert (v = e0) by (eapply inst_e_det with (Θ := Θ); eauto).
-      eauto.
-    + inversion He. now subst.
-  - destruct k; inversion He; subst.
-    + exists ⋆'; eauto.
-    + exists ◻'; eauto.
-    + exists ⧼ k ⧽'; eauto.
-  - inversion He. subst.
-    exists e0. eauto with lngen.
-  - inversion He. subst.
-    exists (be_num n); eauto.
-  - inversion He. subst.
-    exists be_int; eauto.
-  - inversion He; subst.
-    exists be_bot; eauto.
-  - inversion He. subst. simpl in Fr.
-    edestruct (IHLc1 f) as (e1' & E1 & Trans1); eauto.
-    edestruct (IHLc2 a) as (e2' & E2 & Trans2); eauto.
-    exists (be_app e1' e2'). simpl. split. congruence.
-    eauto.
-  - inversion He. subst. simpl in Fr.
-    pick fresh x' for (add x L).
-    assert (Θ ⊩ ([v' /′ x] e) ^`′ x' ⇝ e1 ^`' x').
-    eapply H3. auto.
-    assert (([v' /′ x] e) ^`′ x' = [v' /′ x] e ^`′ x') by admit.
-    rewrite H2 in H1.
-    destruct (H0 x' (e1 ^`' x') Θ) as (e1' & E & Trans).
-    admit. auto. auto.
-    exists (be_abs (close_bexpr_wrt_bexpr x' e1')). split.
-    simpl. admit.
-    econstructor. intros. admit.
-  - admit.
-Admitted.
-
-Lemma inst_wl_rev_subst : forall Γ' x e' e Γ0 Θ Θ'
-  , Θ ⊩ subst_worklist e' x Γ' ⟿ Γ0 ⫣ Θ'
-  → Θ ⊩ e' ⇝ e
-  → exists Γ
-    , subst_dworklist e x Γ = Γ0
-    ∧ Θ ⊩ Γ' ⟿ Γ ⫣ Θ'.
-Proof.
-  intro Γ'.
-  pattern Γ'.
-  apply wl_mut with
-    (P0 := fun w' =>
-      forall x e' e w0 Θ
-      , Θ ⊩ subst_work e' x w' ⇝′ w0
-        → Θ ⊩ e' ⇝ e
-        → exists w, subst_dwork e x w = w0 ∧ Θ ⊩ w' ⇝′ w); simpl; intros.
-  - inversion H; subst.
-    exists dwl_nil; simpl; repeat split; auto.
-  - simpl in H1. inversion H1; subst. admit.
-  - destruct b; inversion H0; subst; simpl in *; admit.
-  - admit.
-  -
-Admitted.
