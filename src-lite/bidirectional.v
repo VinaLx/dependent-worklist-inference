@@ -38,6 +38,16 @@ Proof.
     split. eapply inb_here. admit. admit.
 Admitted.
 
+Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
+  busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
+Proof.
+  intros.
+  induction H.
+  1-7: admit.
+  -
+    replace B with (B ^^ t) by admit.
+    eapply s_app.
+Admitted.
 
 Theorem bidir_complete : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
