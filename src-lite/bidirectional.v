@@ -6,6 +6,8 @@ Require Import bidir.elaboration.
 
 Require Import Lia.
 
+Set Printing Parentheses.
+
 Fixpoint to_bexpr (e : expr) : bexpr :=
   match e with
   | e_var_f x => be_var_f x
@@ -39,6 +41,47 @@ Definition to_bk (k : kind) : bkind :=
   end
 .
 
+
+Lemma size_expr_lt_size_body : forall n e A,
+    size_body (b_anno e A) < S n -> size_expr e < n /\ size_expr A < n.
+Proof.
+  intros. unfold size_body in H. fold size_expr in H. lia.
+Qed.
+
+
+Lemma open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr : forall n A n0 x,
+    size_expr A < n -> 
+    open_bexpr_wrt_bexpr_rec n0 `' x (to_bexpr A) = to_bexpr (open_expr_wrt_expr_rec n0 ` x A).
+Proof.
+  intro n. induction n.
+  - intros. inversion H.
+  -
+    intro A. induction A; intros; auto.
+    + simpl. destruct (lt_eq_lt_dec n0 n1).
+      * destruct s; auto; lia.
+      * auto.
+    + destruct k; auto.
+    + simpl in *. rewrite (IHA n0 x). auto. lia.
+    + simpl in *. rewrite (IHA1 n0 x). rewrite (IHA2 n0 x). auto. lia. lia.
+    + simpl in *. destruct b. simpl.
+      assert (size_body (b_anno e A0) < S n). { lia. }. specialize (size_expr_lt_size_body n e A0 H0). intro.
+      rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
+      auto. all : lia.
+    + simpl in *. rewrite (IHA1 n0 x). rewrite (IHA2 (S n0) x).
+      auto. lia. lia.
+    + simpl in *. destruct b. simpl.
+      assert (size_body (b_anno e A0) < S n). { lia. }. specialize (size_expr_lt_size_body n e A0 H0). intro.
+      rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
+      auto. all : lia.
+    + simpl in *. rewrite (IHA1 n0 x). rewrite (IHA2 (S n0) x).
+      auto. lia. lia.
+    + simpl in *. rewrite (IHA1 n0 x). rewrite (IHA2 n0 x).
+      auto. lia. lia.
+    + simpl in *. rewrite (IHA n0 x). auto. lia.
+Qed.
+
+
+
 Theorem lc_tobexpr : forall A x,
     lc_bexpr (to_bexpr (A ^` x))
   -> lc_bexpr (to_bexpr A ^`' x).
@@ -53,73 +96,33 @@ Proof.
   - unfold to_bexpr. destruct b.
     constructor; fold open_bexpr_wrt_bexpr_rec; fold to_bexpr.
     + inversion H.
-      inversion H2. constructor. admit.
+      inversion H2. constructor. intro.  simpl. rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr e)) e 1 x). auto. lia.
     + inversion H.
       inversion H3. constructor.
       * apply IHA. assumption.
-      * admit.
+      * intros. rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A0)) A0 1 x).
+        auto. lia.
   
   - inversion H. constructor; fold open_bexpr_wrt_bexpr_rec; fold to_bexpr.
     + apply IHA1. auto.
     + intros.
       specialize (H3 x0).
-      admit.
+      rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A2)) A2 1 x). auto. lia.
   - unfold to_bexpr. destruct b. inversion H. constructor; fold open_bexpr_wrt_bexpr_rec; fold to_bexpr.
-    + constructor. admit.
-    + constructor; inversion H3.  apply IHA. auto. admit. 
+    + constructor. intro. inversion H2.
+      rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr e)) e 1 x). auto. lia.
+    + constructor; inversion H3.  apply IHA. auto.
+      intro. rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A0)) A0 1 x). auto. lia.
   - inversion H. constructor; fold open_bexpr_wrt_bexpr_rec; fold to_bexpr.
     + apply IHA1. assumption. 
-    + intro. admit.
+    + intro. rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A2)) A2 1 x). auto. lia.
   - inversion H; constructor.
     + inversion H2. constructor. apply IHA2. auto.
     + eauto.
   - inversion H; constructor; eauto.
-Admitted. 
+Qed.
 
-
-(* Theorem to_bexpr_keeps_lc : forall A, lc_expr A -> lc_bexpr (to_bexpr A).
-Proof.
-  intros. induction H; try (simpl; constructor; auto).
-  (* lc_e_kind *)
-  - destruct k; constructor.
-  (* lc_e_abs *)
-  - unfold to_bexpr. destruct b. fold to_bexpr.
-    constructor.
-
-    constructor. destruct b eqn:Heqb. subst. simpl. constructor.  
-    + constructor. intros. specialize (H0 x). inversion H0. auto. admit.
-    + constructor. auto. intros. specialize (H0 x). inversion H0. admit.
-  (* lc_e_pi *)
-  - intros. specialize (H1 x). auto. eapply lc_tobexpr. eauto.
-| _ => (* lc_e_bind *)
-  - destruct b eqn:Heqb. subst. simpl. constructor.
-    + constructor. intro. specialize (H0 x). admit.
-    + constructor. auto.  intro. specialize (H0 x). admit.
-  (* lc_e_all *)
-  - intros. eapply lc_tobexpr. eapply H1.
-Admitted.
-
-Scheme Induction for lc_expr Sort Prop
-  with Induction for lc_body Sort Prop.
-
-Theorem to_bexpr_keeps_lc : forall A, lc_expr A -> lc_bexpr (to_bexpr A).
-Proof.
-  intros. pattern A, H.  
-  apply lc_expr_ind_dep with (
-      P0 := fun b (_ : lc_body b) => match b with (b_anno e A)  => lc_expr e /\ lc_expr A end);
-    intros; try (simpl; auto).
-  - destruct k; simpl; auto.
-  - destruct b. simpl in H1.
-    + constructor.
-      * constructor. intros. specialize (H1 x). destruct H1. apply lc_tobexpr. admit.
-      * constructor. auto. intros. specialize (H1 x). destruct H1. apply lc_tobexpr. admit.
-  - constructor; auto. intros. apply lc_tobexpr. auto.
-  - destruct b. simpl in H1. constructor.
-    + constructor. intros. specialize (H1 x). destruct H1. apply lc_tobexpr. admit.
-    + constructor. auto. intros. specialize (H1 x). destruct H1. apply lc_tobexpr. admit.
-  - constructor; auto. intros. apply lc_tobexpr. auto.
-Admitted. *)
-
+      
 Scheme Induction for expr Sort Prop
   with Induction for body Sort Prop.
 
@@ -138,10 +141,10 @@ Proof.
     + destruct k; constructor.
     + constructor.
       * constructor.
-      * inversion H1. simpl in H0. eapply H; eauto. lia.
+      * inversion H1. simpl in H0. apply H; auto. lia.
     + constructor.
-      * inversion H2. simpl in H1. eapply H; eauto. lia.
-      * inversion H2. simpl in H1. eapply H0; auto. lia.
+      * inversion H2. simpl in H1. apply H; auto. lia.
+      * inversion H2. simpl in H1. apply H0; auto. lia.
     + destruct b. simpl in *. constructor; inversion H2.
       * constructor. intros.  apply lc_tobexpr.
         eapply IHn.
@@ -158,7 +161,7 @@ Proof.
         unfold open_expr_wrt_expr. rewrite (size_expr_open_expr_wrt_expr_rec_var B x 0). lia.
         apply H6.
     + destruct b. simpl in *. inversion H2. constructor.
-      * constructor. intro. specialize (H6 x). inversion H6. apply lc_tobexpr.
+      * constructor. intro. specialize (H6 x). inversion H6.  apply lc_tobexpr.
         eapply IHn.
         -- unfold open_expr_wrt_expr. rewrite (size_expr_open_expr_wrt_expr_rec_var e x 0). lia.
         -- auto.
@@ -190,7 +193,7 @@ Proof.
   - auto.
   - simpl. constructor; inversion H; subst.
     + apply IHΓ. auto.
-    + apply to_bexpr_keeps_lc. auto.
+    + eapply to_bexpr_keeps_lc; auto.
 Qed.
 
 
@@ -217,7 +220,7 @@ Proof.
 Admitted.
 
 
-Check expr_ind.
+Locate "^`'".
 
 Lemma in_context_elab : forall Γ x A,
     x :_ A ∈ Γ -> ⊢ Γ -> forall Γ', wf_context_elab Γ' Γ -> exists A' k, in_bctx x A' Γ' /\ busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽.
