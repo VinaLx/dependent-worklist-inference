@@ -41,13 +41,21 @@ Definition to_bk (k : kind) : bkind :=
   end
 .
 
-
 Lemma size_expr_lt_size_body : forall n e A,
     size_body (b_anno e A) < S n -> size_expr e < n /\ size_expr A < n.
 Proof.
   intros. unfold size_body in H. fold size_expr in H. lia.
 Qed.
 
+Ltac eq_swap_open_bexpr_with_to_bexpr IHn x:=
+  match goal with
+  | [ _ : _ |- eq (_ (open_bexpr_wrt_bexpr_rec ?n0 _(to_bexpr ?A))) ?Q ] 
+      => rewrite (IHn A n0 x); auto; lia
+  | [ _ : _ |- eq (_ (open_bexpr_wrt_bexpr_rec ?n0 _ (to_bexpr ?A1)) (open_bexpr_wrt_bexpr_rec ?n1 _ (to_bexpr ?A2))) _ ] 
+      => rewrite (IHn A1 n0 x); try rewrite (IHn A2 n1 x); auto; lia
+  | [ _ : _ |- eq (_ (_ (open_bexpr_wrt_bexpr_rec ?n0 _ (to_bexpr ?A1))) (open_bexpr_wrt_bexpr_rec ?n1 _ (to_bexpr ?A2))) _ ] 
+      => rewrite (IHn A1 n0 x); try rewrite (IHn A2 n1 x); auto; lia
+  end.
 
 Lemma open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr : forall n A n0 x,
     size_expr A < n -> 
@@ -56,28 +64,19 @@ Proof.
   intro n. induction n.
   - intros. inversion H.
   -
-    intro A. induction A; intros; auto; simpl in *.
+    intro A. induction A; intros; auto; simpl in *; try (eq_swap_open_bexpr_with_to_bexpr IHn x).
     + destruct (lt_eq_lt_dec n0 n1).
       * destruct s; auto; lia.
       * auto.
     + destruct k; auto.
-    + rewrite (IHA n0 x). auto. lia.
-    + rewrite (IHA1 n0 x). rewrite (IHA2 n0 x). auto. lia. lia.
     + destruct b. simpl.
       assert (size_body (b_anno e A0) < S n). { lia. } specialize (size_expr_lt_size_body n e A0 H0). intro.
       rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
       auto. all : lia.
-    + rewrite (IHA1 n0 x). rewrite (IHA2 (S n0) x).
-      auto. lia. lia.
     + destruct b. simpl.
       assert (size_body (b_anno e A0) < S n). { lia. } specialize (size_expr_lt_size_body n e A0 H0). intro.
       rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
       auto. all : lia.
-    + rewrite (IHA1 n0 x). rewrite (IHA2 (S n0) x).
-      auto. lia. lia.
-    + rewrite (IHA1 n0 x). rewrite (IHA2 n0 x).
-      auto. lia. lia.
-    + rewrite (IHA n0 x). auto. lia.
 Qed.
 
 Ltac swap_open_expr_wrt_bexpr_rec_with_to_bexpr :=
@@ -223,14 +222,15 @@ Proof.
     split. eapply inb_here.
     + eapply wf_context_elab_keeps_lc; eauto.
     + admit.
-    + replace (Γ'0,' x : A') with (Γ'0,' x : A',,' bctx_nil). eapply bidir_narrowing. .constructor. admit.
+    + replace (Γ'0,' x : A') with (Γ'0,' x : A',,' bctx_nil). 
+      * admit.
+      * auto. 
   - inversion H0. subst.
     inversion Wf; subst.
     specialize (IHIn H4 Γ'0 H5). destruct IHIn as [A'0 [k1 [IHInbctx  IHBusubElab]]].
     exists A'0, k1. split. 
     + apply inb_there. admit. auto.
-    + constructor. 
-    
+    + apply bussub_elab_narrowing. constructor. 
       admit. admit.
 Admitted.
 
