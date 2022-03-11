@@ -1,4 +1,5 @@
 Require Export decl.notations.
+Require Import Program.Tactics.
 Require Export Coq.Program.Equality.
 
 Definition wf_dom : forall {Γ}, ⊢ Γ -> atoms.
@@ -23,8 +24,11 @@ Ltac apply_fresh_base_fixed H gather_vars atom_name :=
 Tactic Notation "pick" "fresh" ident(x) "and" "apply" constr(H) "for" "weakening" :=
   apply_fresh_base_fixed H gather_for_weakening x.
 
-Scheme usub_mut := Induction for usub       Sort Prop
-  with   wf_mut := Induction for wf_context Sort Prop.
+Scheme usub_mut := Induction for usub        Sort Prop
+  with             Induction for wf_context  Sort Prop.
+
+Scheme wf_mut   := Induction for wf_context  Sort Prop
+  with             Induction for usub        Sort Prop.
 
 Lemma wt_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
@@ -52,6 +56,50 @@ Lemma weakening_auto_helper : forall Γ1 Γ2 x A,
 Proof.
   auto.
 Qed.
+
+
+Lemma wf_lc : forall Γ,
+  ⊢ Γ -> lc_context Γ.
+Proof.
+  intros. 
+  pattern Γ, H.
+  apply wf_mut with
+  (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros.
+  - constructor.
+  - constructor; auto. destruct H1. auto.
+  - induction i.
+    + split. constructor. auto.
+    + apply IHi.
+      inversion w. auto.
+      inversion H0. auto.
+  - repeat split. all : constructor.
+  - repeat split. all : constructor.
+  - repeat split. all : constructor.
+  - destruct_conjs. repeat split; try constructor; auto.
+  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.  
+    repeat split.
+    + eapply lc_e_abs_exists with (x1:=x0). auto. constructor; auto.
+    + eapply lc_e_abs_exists with (x1:=x0). auto. constructor; auto.
+    + eapply lc_e_pi_exists with(x1:=x0); auto.
+  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
+    repeat split; auto; eapply lc_e_pi_exists with(x1:=x0); auto.
+  - destruct_conjs. repeat split; try  constructor; auto.
+    inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
+  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. 
+    repeat split.
+    + eapply lc_e_bind_exists with(x1:=x0); auto. constructor; try fold open_expr_wrt_expr_rec; auto.
+    + eapply lc_e_bind_exists with(x1:=x0); auto. constructor; try fold open_expr_wrt_expr_rec; auto.
+    + eapply lc_e_all_exists with (x1:=x0); auto. 
+  - destruct_conjs. repeat split; try constructor; auto.
+  - destruct_conjs. repeat split; try constructor; auto.
+  - destruct_conjs. repeat split; auto. pick_fresh x0.
+    eapply lc_e_all_exists with (x1:=x0). auto. specialize (H3 x0 Fr). destruct_conjs. auto.
+  - destruct_conjs. repeat split; auto. pick_fresh x0.
+    eapply lc_e_all_exists with (x1:=x0). auto. specialize (H2 x0 Fr). destruct_conjs. auto.
+  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; eapply lc_e_all_exists with (x1:=x0); auto.
+  - destruct_conjs. repeat split; try constructor; auto.
+Qed. 
+
 
 Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
@@ -193,3 +241,5 @@ Proof.
     + pick fresh x and apply s_forall; eauto using narrowing_cons.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
 Qed.
+
+
