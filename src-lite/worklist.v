@@ -86,6 +86,8 @@ where "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2" := (reorder G1 psi x e G2) : type_scope
 #[export]
 Hint Constructors reorder : core.
 
+
+
 (* variance sign for monoization *)
 Inductive vsign : Set :=
 | v_pos : vsign
@@ -316,16 +318,16 @@ Inductive wl_step : worklist -> Prop :=
   → e ⤚ ⊖ ⇥ e' ‖ ψ \ L
   → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ'
   → (forall k, k `notin` L `union` psi_dom ψ
-    → ⪧′ ⟦e' /′ ^x⟧ Γ' ⫢′ ⟦e' /′ ^x⟧ c $′ A
-      ⊨′ e' ⇒′ (wl_nil ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽))
+    → ⪧′ ⟦e' /′ ^x⟧ Γ'
+      ⊨′ e' <: e ⇒′ (⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽))
   → ⪧′ Γ ⊨′ `^x <: e ⇒′ c
 | st_ex_r : forall L Γ Γ' x A e e' ψ c
   , ^x :′ A  ∈′ Γ → `^x <> e
   → e ⤚ ⊕ ⇥ e' ‖ ψ \ L
   → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ'
   → (forall k, k `notin` L `union` psi_dom ψ
-    → ⪧′ ⟦e' /′ ^x⟧ Γ' ⫢′ ⟦e' /′ ^x⟧ c $′ A
-      ⊨′ e' ⇒′ (wl_nil ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽))
+    → ⪧′ ⟦e' /′ ^x⟧ Γ'
+      ⊨′ e <: e' ⇒′ (⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽))
   → ⪧′ Γ ⊨′ e <: `^x ⇒′ c
 
 (* infer_app *)
@@ -335,8 +337,8 @@ Inductive wl_step : worklist -> Prop :=
       ⊨′ B ^^′ `^y ⋅ e1 & e2 ⇒′ c)
   → ⪧′ Γ ⊨′ ae_all A B ⋅ e1 & e2 ⇒′ c
 | st_iapp_pi : forall L Γ A B e1 e2 c
-  , (forall x, x `notin` L → forall k, k `notin` add x L
-    → mono_atype e1 → mono_atype e2 → e1 ≃ e2
+  , mono_atype e1 → mono_atype e2 → e1 ≃ e2
+  → (forall x, x `notin` L → forall k, k `notin` add x L
     → ⪧′ Γ ⫢′ c $′ B ^^′ e1 ⊨′ e1 <: e2 ⇐′ A ⊨′ e2 <: e1 ⇐′ A
       ,′ ⧼^k⧽ ⊨′ x :?′ A ⊢? B ⇐′ ⧼`^k⧽)
   → ⪧′ Γ ⊨′ ae_pi A B ⋅ e1 & e2 ⇒′ c

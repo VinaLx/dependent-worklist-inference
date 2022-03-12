@@ -51,9 +51,11 @@ Inductive dwl_step : dworklist → Prop :=
   → ⪧ Γ ⊨ A ⟼ c
 | dst_comp : forall Γ A B k
   , ⌊ Γ ⌋ ⊢ A <: B ⇒ ⧼ k ⧽'
+  → ⪧ Γ
   → ⪧ Γ ⊨ A ≲ B
 | dst_comp_box : forall Γ
-  , ⪧ Γ ⊨ ◻' ≲ ◻'
+  , ⪧ Γ
+  → ⪧ Γ ⊨ ◻' ≲ ◻'
 | dst_check : forall Γ ob e1 e2 A
   , ⪧ Γ ,? ob ⊨ e1 <: e2 ⇒ (dwl_nil ⊨ ↑'0 ≲ A)
   → ⪧ Γ ⊨ ob ⊢? e1 <: e2 ⇐ A
