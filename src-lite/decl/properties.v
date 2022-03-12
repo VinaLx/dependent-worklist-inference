@@ -30,6 +30,14 @@ Scheme usub_mut := Induction for usub        Sort Prop
 Scheme wf_mut   := Induction for wf_context  Sort Prop
   with             Induction for usub        Sort Prop.
 
+
+Lemma monotype_lc : forall e,
+    mono_type e -> lc_expr e.
+Proof.
+  intros. induction H; auto.
+Qed.
+
+  
 Lemma wt_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
 Proof.
@@ -57,6 +65,14 @@ Proof.
   auto.
 Qed.
 
+Ltac solve_lc_with x0 :=
+  match goal with
+  | _ : _ |- lc_expr (e_pi ?A ?B) => eapply lc_e_pi_exists with (x1:=x0); auto
+  | _ : _ |- lc_expr (e_abs ?A ?B) => eapply lc_e_abs_exists with (x1:=x0); auto; constructor; auto
+  | _ : _ |- lc_expr (e_bind ?A ?B) => eapply lc_e_bind_exists with (x1:=x0); auto; constructor; try fold open_expr_wrt_expr_rec; auto
+  | _ : _ |- lc_expr (e_all ?A ?B) => eapply lc_e_all_exists with (x1:=x0); auto
+  end.
+
 
 Lemma wf_lc : forall Γ,
   ⊢ Γ -> lc_context Γ.
@@ -64,50 +80,78 @@ Proof.
   intros. 
   pattern Γ, H.
   apply wf_mut with
-  (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros.
-  - constructor.
-  - constructor; auto. destruct H1. auto.
+    (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros; destruct_conjs;
+  try solve [constructor; auto | repeat (split; constructor)].
   - induction i.
     + split. constructor. auto.
     + apply IHi.
       inversion w. auto.
       inversion H0. auto.
-  - repeat split. all : constructor.
-  - repeat split. all : constructor.
-  - repeat split. all : constructor.
-  - destruct_conjs. repeat split; try constructor; auto.
   - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.  
-    repeat split.
-    + eapply lc_e_abs_exists with (x1:=x0). auto. constructor; auto.
-    + eapply lc_e_abs_exists with (x1:=x0). auto. constructor; auto.
-    + eapply lc_e_pi_exists with(x1:=x0); auto.
+    repeat split; solve_lc_with x0.
   - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
-    repeat split; auto; eapply lc_e_pi_exists with(x1:=x0); auto.
+    repeat split; auto; solve_lc_with x0.
   - destruct_conjs. repeat split; try  constructor; auto.
     inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
   - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. 
-    repeat split.
-    + eapply lc_e_bind_exists with(x1:=x0); auto. constructor; try fold open_expr_wrt_expr_rec; auto.
-    + eapply lc_e_bind_exists with(x1:=x0); auto. constructor; try fold open_expr_wrt_expr_rec; auto.
-    + eapply lc_e_all_exists with (x1:=x0); auto. 
-  - destruct_conjs. repeat split; try constructor; auto.
-  - destruct_conjs. repeat split; try constructor; auto.
-  - destruct_conjs. repeat split; auto. pick_fresh x0.
-    eapply lc_e_all_exists with (x1:=x0). auto. specialize (H3 x0 Fr). destruct_conjs. auto.
-  - destruct_conjs. repeat split; auto. pick_fresh x0.
-    eapply lc_e_all_exists with (x1:=x0). auto. specialize (H2 x0 Fr). destruct_conjs. auto.
-  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; eapply lc_e_all_exists with (x1:=x0); auto.
-  - destruct_conjs. repeat split; try constructor; auto.
+    repeat split; solve_lc_with x0.
+  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H3 x0 Fr). destruct_conjs.
+    solve_lc_with x0.
+  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
+    solve_lc_with x0.
+  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
 Qed. 
+
+
+Theorem usub_context_is_wf : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
+Proof.
+  intros.
+  induction H; auto.
+Qed.
 
 
 Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
 
-Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
-    in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
+
+Lemma lc_insert_middle : forall Γ1 Γ2 Γ3,
+    lc_context Γ2 -> lc_context (Γ1,,Γ3) -> lc_context (Γ1,,Γ2,,Γ3).
 Proof.
-Admitted.
+  intros.
+  induction Γ2.
+  - auto.
+  - inversion H. simpl in *.
+    induction Γ3.
+    + simpl in *. constructor; auto.
+    + simpl in *. inversion H0. 
+      specialize (IHΓ2 H3). inversion IHΓ2.
+      constructor; auto.
+Qed.
+
+Lemma lc_middle : forall Γ1 Γ2 Γ3,
+    lc_context (Γ1,,Γ2,,Γ3) -> lc_context Γ2.
+Proof.
+  intros.
+  induction Γ3.
+  - induction Γ2; simpl in *. auto.
+    inversion H. constructor; auto.
+  - inversion H. auto.
+Qed.
+  
+
+Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
+    lc_context Γ2 -> in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
+Proof.
+  intros.
+  induction Γ3.
+  - induction Γ2.
+    + auto.
+    + inversion H. simpl in *. econstructor; auto.
+  - simpl in *. inversion H0. subst.
+    + apply in_here. 2: auto. apply lc_insert_middle; auto.
+    + apply in_there. auto. apply IHΓ3. auto.
+Qed.
 
 Theorem weakening : forall Γ1 Γ2 Γ3 e1 e2 A,
     Γ1 ,, Γ3 ⊢ e1 <: e2 : A ->
@@ -116,7 +160,8 @@ Theorem weakening : forall Γ1 Γ2 Γ3 e1 e2 A,
 Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   intros * H.
   dependent induction H; intros.
-  - constructor. auto. auto using in_ctx_weakening.
+  - constructor. auto. apply in_ctx_weakening. apply wf_lc in H1.
+    apply lc_middle in H1. auto. auto.
   - auto.
   - auto.
   - auto.

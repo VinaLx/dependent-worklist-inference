@@ -58,32 +58,42 @@ Ltac eq_swap_open_bexpr_with_to_bexpr IHn x:=
       => rewrite (IHn A1 n0 x); try rewrite (IHn A2 n1 x); auto; lia
   end.
 
-
-Lemma open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr : forall n A n0 x,
-    size_expr A < n -> 
-    open_bexpr_wrt_bexpr_rec n0 `' x (to_bexpr A) = to_bexpr (open_expr_wrt_expr_rec n0 ` x A).
+Lemma open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr : forall n A n0 t,
+  size_expr A < n -> 
+  open_bexpr_wrt_bexpr_rec n0 (to_bexpr t) (to_bexpr A) = to_bexpr (open_expr_wrt_expr_rec n0 t A).
 Proof.
   intro n. induction n.
   - intros. inversion H.
-  - intro A. induction A; intros; auto; simpl in *;try (eq_swap_open_bexpr_with_to_bexpr IHn x).
+  - intro A. induction A; intros; auto; simpl in *;try (eq_swap_open_bexpr_with_to_bexpr IHn t).
     + destruct (lt_eq_lt_dec n0 n1).
       * destruct s; auto; lia.
       * auto.
     + destruct k; auto.
     + destruct b. simpl.
       assert (size_body (b_anno e A0) < S n). { lia. } specialize (size_expr_lt_size_body n e A0 H0). intro.
-      rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
+      rewrite (IHA n0 t). rewrite (IHn e (S n0) t). rewrite (IHn A0 (S n0) t).
       auto. all : lia.
     + destruct b. simpl.
       assert (size_body (b_anno e A0) < S n). { lia. } specialize (size_expr_lt_size_body n e A0 H0). intro.
-      rewrite (IHA n0 x). rewrite (IHn e (S n0) x). rewrite (IHn A0 (S n0) x).
+      rewrite (IHA n0 t). rewrite (IHn e (S n0) t). rewrite (IHn A0 (S n0) t).
       auto. all : lia.
 Qed.
+
+
+Lemma open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr_var : forall n A n0 x,
+    size_expr A < n -> 
+    open_bexpr_wrt_bexpr_rec n0 `' x (to_bexpr A) = to_bexpr (open_expr_wrt_expr_rec n0 ` x A).
+Proof.
+  intros.
+  replace (`' x) with (to_bexpr (` x)) by auto.
+  eapply open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr; auto.
+Qed.
+
 
 Ltac swap_open_expr_wrt_bexpr_rec_with_to_bexpr :=
   match goal with 
   | _ : _ |- lc_bexpr (open_bexpr_wrt_bexpr_rec 1 `' ?x (to_bexpr ?A) ^`' _) => 
-    rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A)) A 1 x); auto; lia
+    rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr_var (S (size_expr A)) A 1 x); auto; lia
   end.
       
 
@@ -178,7 +188,7 @@ Qed.
 
 Ltac rewrite_to_expr A x := 
   unfold open_bexpr_wrt_bexpr; 
-  rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr (S (size_expr A)) A 0 x (le_lt_n_Sm (size_expr A) (size_expr A) (le_n (size_expr A)))); 
+  rewrite (open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr_var (S (size_expr A)) A 0 x (le_lt_n_Sm (size_expr A) (size_expr A) (le_n (size_expr A)))); 
   fold open_expr_wrt_expr_rec.
 
 Scheme Induction for expr Sort Prop
@@ -232,7 +242,7 @@ Qed.
 
 Theorem to_bexpr_keeps_reduce : forall A B, 
    A ⟶ B -> breduce (to_bexpr A) (to_bexpr B).
-Proof.
+Proof. (* *** *)
   intros.
   induction H.
   - constructor; fold to_bexpr.
