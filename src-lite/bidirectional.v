@@ -77,8 +77,9 @@ Proof.
   - eapply bs_app with (A:=(to_bexpr (e_pi A0 B))); fold to_bexpr.
     + apply to_bexpr_keeps_mono_type. auto.
     + auto.
-    + replace (to_bexpr (B ^^ t)) with ((to_bexpr B) ^^' (to_bexpr t)) by admit. econstructor; fold to_bexpr.
-      * intros. admit. (* substitution *)
+    + replace (to_bexpr (B ^^ t)) with ((to_bexpr B) ^^' (to_bexpr t)) by (eapply open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr; eauto).
+      econstructor; fold to_bexpr.
+      * intros. admit. (* *** *)
       * eapply bs_sub. exact H0.
         admit. (* type_correctness *)
   - econstructor; fold to_bexpr.
@@ -113,7 +114,7 @@ Proof.
   - simpl. eapply bs_anno with (k:=to_bk k). 
     eapply bs_castup with (k:=to_bk k) (B:=to_bexpr B).
     + apply bidir_refl_l in H0. destruct k; auto. 
-    + admit. (* *** *)
+    + apply to_bexpr_keeps_reduce. auto. 
     + eapply bs_sub with (A:=to_bexpr B). auto.
       admit. (* type_correctness *) 
     + destruct k; auto.
@@ -121,15 +122,16 @@ Proof.
   - eapply bs_castdn with (k:=to_bk k) (A:=to_bexpr A0); fold to_bexpr. 
     + destruct k; auto.
     + constructor. 
-      * apply to_bcontext_keeps_lc. apply wf_lc. admit. 
-      * admit. (* *** *)
+      * apply to_bcontext_keeps_lc. apply wf_lc. eapply usub_context_is_wf. eauto.
+      * apply to_bexpr_keeps_reduce. auto.
     + auto.
    - eapply bs_forall_l with (t:=to_bexpr t) (k:=to_bk k); fold to_bexpr.
     + apply to_bexpr_keeps_mono_type. auto.
     + destruct k; auto.
     + eapply bs_sub with (k:=to_bk k); eauto.
       destruct k; auto.
-    + admit. (* * *)
+    + replace (to_bexpr (B ^^ t)) with ((to_bexpr B) ^^' (to_bexpr t)) in H2 by (eapply open_bexpr_wrt_bexpr_rec_exchanges_to_bexpr; eauto).
+      auto.
     + intros. specialize (H3 x H4). simpl in H4.
       rewrite_to_expr B x. auto.
   - eapply bs_forall_r with (k:=to_bk k) (L:=L).
@@ -142,7 +144,7 @@ Proof.
     + destruct k; auto.
     + intros. fold to_bexpr. specialize (H2 x H3). simpl in H2.
       rewrite_to_expr B x. rewrite_to_expr C x. auto. 
-  - admit. (* *** *) 
+  - admit.
 (* wf_context *)
   - constructor.
   - simpl. apply bwf_cons with (k:=to_bk k). 
@@ -156,14 +158,12 @@ Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
   busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
 Proof.
   intros.
-  induction H.
+  induction H; try solve constructor.
   (* pattern Γ', e1, e2', d, A', Γ, e1, e2, A, H.
   eapply busub_ind_dep with 
     (P0 := fun Γ' (_ : ⫦ Γ') => ⊢ Γ). *)
-  1-7: admit.
-  -
-    replace B with (B ^^ t) by admit.
-    eapply s_app.
+  - constructor; auto. admit.
+  - constructor. 
 Admitted.
 
 

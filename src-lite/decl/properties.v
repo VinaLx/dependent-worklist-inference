@@ -65,6 +65,7 @@ Proof.
   auto.
 Qed.
 
+
 Ltac solve_lc_with x0 :=
   match goal with
   | _ : _ |- lc_expr (e_pi ?A ?B) => eapply lc_e_pi_exists with (x1:=x0); auto
@@ -84,9 +85,7 @@ Proof.
   try solve [constructor; auto | repeat (split; constructor)].
   - induction i.
     + split. constructor. auto.
-    + apply IHi.
-      inversion w. auto.
-      inversion H0. auto.
+    + apply IHi. inversion w. auto. inversion H0. auto.
   - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.  
     repeat split; solve_lc_with x0.
   - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
@@ -178,6 +177,15 @@ Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   - eapply s_sub; eauto 3.
 Qed.
 
+Lemma ctx_equiv : forall Γ1 Γ2 x A B,
+  ctx_dom (Γ1, x : A,, Γ2) = ctx_dom (Γ1, x : B,, Γ2).
+intros.
+  induction Γ2.
+  - auto.
+  - simpl. rewrite IHΓ2. auto.
+Qed.
+
+
 Theorem narrowing : forall Γ1 Γ2 x A B e1 e2 C k,
     Γ1, x : B,, Γ2 ⊢ e1 <: e2 : C ->
     Γ1 ⊢ A <: B : e_kind k ->
@@ -191,8 +199,12 @@ Proof with autorewrite with ctx; eauto.
     (P0 := fun Γ (_ : ⊢ Γ) =>
              forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2);
     intros; subst.
-  - apply s_var.
-    + auto.
+  - destruct (x==x0). 
+    + subst. assert (A0=B) by admit. subst. eapply s_sub with (A:=A).
+      * apply s_var; auto. admit.
+      * replace (Γ1, x0 : A,, Γ2) with (Γ1,,((ctx_nil,x0 : A),,Γ2),,ctx_nil). eapply weakening.
+        simpl. eauto.
+        simpl. admit. admit.
     + admit.
   - auto.
   - auto.
@@ -200,7 +212,7 @@ Proof with autorewrite with ctx; eauto.
   - eauto.
   - pick fresh x' and apply s_abs...
   - pick fresh x' and apply s_pi...
-  - admit.
+  - eauto.
   - pick fresh x' and apply s_bind...
   - eauto.
   - eauto.
@@ -208,11 +220,10 @@ Proof with autorewrite with ctx; eauto.
   - pick fresh x' and apply s_forall_r...
   - pick fresh x' and apply s_forall...
   - eauto.
-
   - destruct Γ2; simpl in H; inversion H.
   - destruct Γ2; simpl in *; inversion H1; subst.
     + eauto using refl_l.
-    + apply wf_cons with k0; auto. admit.
+    + apply wf_cons with k0; auto. rewrite (ctx_equiv Γ1 Γ2 x A B). auto.
 Admitted.
 
 Corollary narrowing_cons : forall Γ x A B e1 e2 C k
