@@ -169,7 +169,7 @@ e1 e3 --> e2 e3
 
 mono e
 ------------------------------------------------------ :: inst
-((bind x. e1) : forall x : A. B) e2 --> ([e / x] e1) e2
+((bind x. e1) : forall x : A. B) e2 --> ([e / x] (e1 : B)) e2
 
 % -------------------------------------- :: mu
 % mu x : A. e --> [mu x : A. e / x] e
@@ -180,7 +180,7 @@ castdn e1 --> castdn e2
 
 mono e
 ------------------------------------------------------------- :: cast_inst
-castdn ((bind x. e) : forall x : A. B) --> castdn ([e / x] e1)
+castdn ((bind x. e1) : forall x : A. B) --> castdn ([e / x] (e1 : B))
 
 ---------------------------- :: cast_elim
 castdn ((castup e) : A) --> e
@@ -207,7 +207,7 @@ defns
 BidirectionalUnifiedSubtyping :: '' ::=
 
 defn
-|=> G :: :: bwf_context :: 'bwf_'
+|=> G :: :: wf_bcontext :: 'bwf_'
 by
 
 -------- :: nil

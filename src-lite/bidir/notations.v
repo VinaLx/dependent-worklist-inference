@@ -60,7 +60,7 @@ Delimit Scope bcontext_scope with bctx.
 Bind Scope bcontext_scope with bcontext.
 
 (* 'varVdash' *)
-Notation "⫦ G" := (bwf_context G)
+Notation "⫦ G" := (wf_bcontext G)
     (at level 65, no associativity) : type_scope.
 
 Notation "G ,' x : A" :=

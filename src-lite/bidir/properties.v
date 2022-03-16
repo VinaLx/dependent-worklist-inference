@@ -2,7 +2,7 @@ Require Export bidir.notations.
 Require Import Coq.Program.Equality.
 
 Scheme Induction for busub Sort Prop
-  with Induction for bwf_context Sort Prop
+  with Induction for wf_bcontext Sort Prop
   with Induction for infer_app Sort Prop
   with Induction for greduce Sort Prop.
 

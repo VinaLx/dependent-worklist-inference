@@ -29,8 +29,17 @@ Fixpoint to_bcontext (Γ : context) : bcontext :=
   end
 .
 
+Lemma to_bexpr_reduce : forall e e',
+    e ⟶ e' → breduce (to_bexpr e) (to_bexpr e').
+Proof.
+  induction 1; eauto.
+  - admit.
+  - simpl.
+Admitted.
+
+
 Lemma in_context_elab : forall Γ x A,
-    x :_ A ∈ Γ -> ⊢ Γ -> forall Γ', wf_context_elab Γ' Γ -> exists A' k, in_bctx x A' Γ' /\ busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽.
+    x :_ A ∈ Γ -> ⊢ Γ -> forall Γ', wf_bcontext_elab Γ' Γ -> exists A' k, in_bctx x A' Γ' /\ busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽.
 Proof.
   intros * In Wf.
   induction In; intros.
@@ -38,7 +47,83 @@ Proof.
     split. eapply inb_here. admit. admit.
 Admitted.
 
+Theorem bidir_complete1 : forall Γ e1 e2 A
+  , Γ ⊢ e1 <: e2 : A
+  → to_bcontext Γ ⊢ to_bexpr e1 <: to_bexpr e2 ⇒ to_bexpr A.
+Proof.
+  induction 1.
 
+  1-9: admit.
+  - simpl. econstructor.
+    eapply bs_castup with (B := (to_bexpr B)).
+    + admit.
+    + admit.
+(*
+  1-14: admit.
+  - admit. *)
+Admitted.
+
+Theorem bidir_complete2 : forall Γ e1 e2 A
+  , Γ ⊢ e1 <: e2 : A
+  → to_bcontext Γ ⊢ to_bexpr e1 <: to_bexpr e2 ⇐ to_bexpr A.
+Proof.
+  induction 1.
+  1-7: admit.
+  - admit.
+Admitted.
+
+(* dummy condition *)
+Definition ctx_condition : context → bcontext → Prop := fun c c' => True.
+Definition condition : expr → bexpr → Prop := fun e e' => True.
+
+Theorem bidir_complete3 : forall Γ e1 e2 A
+  , Γ ⊢ e1 <: e2 : A
+  → exists Γ' e1' e2' A', Γ' ⊢ e1' <: e2' ⇒ A' ∧ ctx_condition Γ Γ'
+    ∧ condition e1 e1' ∧ condition e2 e2' ∧ condition A A'.
+Proof.
+  induction 1.
+  1-6: admit.
+  - admit.
+Admitted.
+
+Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
+  , usub_elab Γ e1 e2 A Γ' e1' e2' A'
+  → Γ' ⊢ e1' <: e2' ⇒ A'.
+Proof.
+  induction 1.
+  1-6: admit.
+  - admit.
+
+  - admit.
+  - admit.
+
+  - admit.
+  - admit.
+Admitted.
+
+
+(* completeness / totality of elaboration system *)
+Theorem usub_elab_total : forall Γ e1 e2 A
+  , Γ ⊢ e1 <: e2 : A
+  → usub_elab Γ e1 e2 A
+              (to_bcontext Γ) (to_bexpr e1) (to_bexpr e2) (to_bexpr A).
+Proof.
+  induction 1.
+  1-14: admit.
+  - simpl. econstructor.
+Admitted.
+
+
+Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
+    busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
+Proof.
+  induction 1.
+  1-5: admit.
+  - econstructor. admit.
+Admitted.
+
+
+(*
 Theorem bidir_complete : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
   -> busub_elab
@@ -47,14 +132,14 @@ Theorem bidir_complete : forall Γ e1 e2 A
 Proof.
   intros. pattern Γ, e1, e2, A, H.
   apply usub_mut with
-    (P0 := fun Γ (_ : ⊢ Γ) => wf_context_elab (to_bcontext Γ) Γ); intros.
+    (P0 := fun Γ (_ : ⊢ Γ) => wf_bcontext_elab (to_bcontext Γ) Γ); intros.
   - admit.
   - admit.
   - admit.
   - admit.
   - simpl. eapply bse_anno.
 Admitted.
-
+*)
 
 
 
