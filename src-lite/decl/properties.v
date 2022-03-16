@@ -1,4 +1,5 @@
 Require Export decl.notations.
+Require Import Program.Tactics.
 Require Export Coq.Program.Equality.
 
 Definition wf_dom : forall {Γ}, ⊢ Γ -> atoms.
@@ -23,9 +24,20 @@ Ltac apply_fresh_base_fixed H gather_vars atom_name :=
 Tactic Notation "pick" "fresh" ident(x) "and" "apply" constr(H) "for" "weakening" :=
   apply_fresh_base_fixed H gather_for_weakening x.
 
-Scheme usub_mut := Induction for usub       Sort Prop
-  with   wf_mut := Induction for wf_context Sort Prop.
+Scheme usub_mut := Induction for usub        Sort Prop
+  with             Induction for wf_context  Sort Prop.
 
+Scheme wf_mut   := Induction for wf_context  Sort Prop
+  with             Induction for usub        Sort Prop.
+
+
+Lemma monotype_lc : forall e,
+    mono_type e -> lc_expr e.
+Proof.
+  intros. induction H; auto.
+Qed.
+
+  
 Lemma wt_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
 Proof.
@@ -53,13 +65,92 @@ Proof.
   auto.
 Qed.
 
+
+Ltac solve_lc_with x0 :=
+  match goal with
+  | _ : _ |- lc_expr (e_pi ?A ?B) => eapply lc_e_pi_exists with (x1:=x0); auto
+  | _ : _ |- lc_expr (e_abs ?A ?B) => eapply lc_e_abs_exists with (x1:=x0); auto; constructor; auto
+  | _ : _ |- lc_expr (e_bind ?A ?B) => eapply lc_e_bind_exists with (x1:=x0); auto; constructor; try fold open_expr_wrt_expr_rec; auto
+  | _ : _ |- lc_expr (e_all ?A ?B) => eapply lc_e_all_exists with (x1:=x0); auto
+  end.
+
+
+Lemma wf_lc : forall Γ,
+  ⊢ Γ -> lc_context Γ.
+Proof.
+  intros. 
+  pattern Γ, H.
+  apply wf_mut with
+    (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros; destruct_conjs;
+  try solve [constructor; auto | repeat (split; constructor)].
+  - induction i.
+    + split. constructor. auto.
+    + apply IHi. inversion w. auto. inversion H0. auto.
+  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.  
+    repeat split; solve_lc_with x0.
+  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
+    repeat split; auto; solve_lc_with x0.
+  - destruct_conjs. repeat split; try  constructor; auto.
+    inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
+  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. 
+    repeat split; solve_lc_with x0.
+  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H3 x0 Fr). destruct_conjs.
+    solve_lc_with x0.
+  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
+    solve_lc_with x0.
+  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
+Qed. 
+
+
+Theorem usub_context_is_wf : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
+Proof.
+  intros.
+  induction H; auto.
+Qed.
+
+
 Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
 
-Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
-    in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
+
+Lemma lc_insert_middle : forall Γ1 Γ2 Γ3,
+    lc_context Γ2 -> lc_context (Γ1,,Γ3) -> lc_context (Γ1,,Γ2,,Γ3).
 Proof.
-Admitted.
+  intros.
+  induction Γ2.
+  - auto.
+  - inversion H. simpl in *.
+    induction Γ3.
+    + simpl in *. constructor; auto.
+    + simpl in *. inversion H0. 
+      specialize (IHΓ2 H3). inversion IHΓ2.
+      constructor; auto.
+Qed.
+
+Lemma lc_middle : forall Γ1 Γ2 Γ3,
+    lc_context (Γ1,,Γ2,,Γ3) -> lc_context Γ2.
+Proof.
+  intros.
+  induction Γ3.
+  - induction Γ2; simpl in *. auto.
+    inversion H. constructor; auto.
+  - inversion H. auto.
+Qed.
+  
+
+Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
+    lc_context Γ2 -> in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
+Proof.
+  intros.
+  induction Γ3.
+  - induction Γ2.
+    + auto.
+    + inversion H. simpl in *. econstructor; auto.
+  - simpl in *. inversion H0. subst.
+    + apply in_here. 2: auto. apply lc_insert_middle; auto.
+    + apply in_there. auto. apply IHΓ3. auto.
+Qed.
 
 Theorem weakening : forall Γ1 Γ2 Γ3 e1 e2 A,
     Γ1 ,, Γ3 ⊢ e1 <: e2 : A ->
@@ -68,7 +159,8 @@ Theorem weakening : forall Γ1 Γ2 Γ3 e1 e2 A,
 Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   intros * H.
   dependent induction H; intros.
-  - constructor. auto. auto using in_ctx_weakening.
+  - constructor. auto. apply in_ctx_weakening. apply wf_lc in H1.
+    apply lc_middle in H1. auto. auto.
   - auto.
   - auto.
   - auto.
@@ -85,6 +177,15 @@ Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   - eapply s_sub; eauto 3.
 Qed.
 
+Lemma ctx_equiv : forall Γ1 Γ2 x A B,
+  ctx_dom (Γ1, x : A,, Γ2) = ctx_dom (Γ1, x : B,, Γ2).
+intros.
+  induction Γ2.
+  - auto.
+  - simpl. rewrite IHΓ2. auto.
+Qed.
+
+
 Theorem narrowing : forall Γ1 Γ2 x A B e1 e2 C k,
     Γ1, x : B,, Γ2 ⊢ e1 <: e2 : C ->
     Γ1 ⊢ A <: B : e_kind k ->
@@ -98,8 +199,12 @@ Proof with autorewrite with ctx; eauto.
     (P0 := fun Γ (_ : ⊢ Γ) =>
              forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2);
     intros; subst.
-  - apply s_var.
-    + auto.
+  - destruct (x==x0). 
+    + subst. assert (A0=B) by admit. subst. eapply s_sub with (A:=A).
+      * apply s_var; auto. admit.
+      * replace (Γ1, x0 : A,, Γ2) with (Γ1,,((ctx_nil,x0 : A),,Γ2),,ctx_nil). eapply weakening.
+        simpl. eauto.
+        simpl. admit. admit.
     + admit.
   - auto.
   - auto.
@@ -107,7 +212,7 @@ Proof with autorewrite with ctx; eauto.
   - eauto.
   - pick fresh x' and apply s_abs...
   - pick fresh x' and apply s_pi...
-  - admit.
+  - eauto.
   - pick fresh x' and apply s_bind...
   - eauto.
   - eauto.
@@ -115,11 +220,10 @@ Proof with autorewrite with ctx; eauto.
   - pick fresh x' and apply s_forall_r...
   - pick fresh x' and apply s_forall...
   - eauto.
-
   - destruct Γ2; simpl in H; inversion H.
   - destruct Γ2; simpl in *; inversion H1; subst.
     + eauto using refl_l.
-    + apply wf_cons with k0; auto. admit.
+    + apply wf_cons with k0; auto. rewrite (ctx_equiv Γ1 Γ2 x A B). auto.
 Admitted.
 
 Corollary narrowing_cons : forall Γ x A B e1 e2 C k
@@ -193,3 +297,5 @@ Proof.
     + pick fresh x and apply s_forall; eauto using narrowing_cons.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
 Qed.
+
+
