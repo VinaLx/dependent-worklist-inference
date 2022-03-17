@@ -172,7 +172,8 @@ with usub_elab
   → bcontext → bexpr → bexpr → bexpr → Prop :=
 | s_var : forall Γ x A Γ' A'
   , wf_context_elab Γ Γ'
-  -> in_ctx x A Γ
+  -> in_ctx x A Γ 
+  -> in_bctx x A' Γ'
   -> usub_elab Γ `x `x A Γ' `'x `'x A'
 | s_lit : forall Γ n Γ'
   , wf_context_elab Γ Γ'
@@ -232,6 +233,10 @@ with usub_elab
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))
+  -> ( forall x , x \notin  L  
+      -> ( x  `notin` fv_eexpr (erase (e1  ^`  x)))) 
+  -> ( forall x , x \notin  L  
+      -> ( x  `notin` fv_eexpr (erase (e2  ^`  x)))) 
   → usub_elab Γ (Λ A1, e1 : B1) (Λ A2, e2 : B2) (e_all A1 B1)
               Γ' (be_bind e1' ::' be_all A1' B1')
                  (be_bind e1' ::' be_all A2' B2') (be_all A1' B1')
@@ -277,3 +282,9 @@ with usub_elab
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
   -> usub_elab Γ A B ⧼k⧽ Γ' A' B' ⧼(to_bk k)⧽'
   -> usub_elab Γ e1 e2 B Γ' (e1' ::' B') (e2' ::' B') B'.
+
+
+
+Scheme usub_elab_mut := Induction for usub_elab Sort Prop
+  with                  Induction for wf_context_elab Sort Prop. 
+                               

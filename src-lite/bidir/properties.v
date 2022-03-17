@@ -31,6 +31,8 @@ Proof.
   intros; induction H; eauto.
 Qed.
 
+Hint Resolve bidir_refl_l : bidir.
+
 Theorem bidir_elab_refl_l : forall Γ' e1' e2' d A' Γ e1 e2 A,
   busub_elab Γ' e1' e2' d A' Γ e1 e2 A -> 
   busub_elab Γ' e1' e1' d A' Γ e1 e1 A.
@@ -105,6 +107,9 @@ Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
   busub (Γ1,' x : A,,' Γ2) e1 e2 d C.
 Proof.
 Admitted.
+
+
+Hint Resolve bidir_narrowing : bidir.
 
 (* Theorem bidir_elab_narrowing : forall Γ1' x B' Γ2' e1' e2' d C' Γ1 B Γ2 e1 e2 C,
   busub_elab (Γ1',' x : B',,' Γ2') e1' e2' d C' (Γ1, x : B,, Γ2) e1 e2 C ->

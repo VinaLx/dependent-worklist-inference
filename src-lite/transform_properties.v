@@ -32,14 +32,6 @@ Fixpoint to_bcontext (Γ : context) : bcontext :=
   | ctx_cons Γ' x A => bctx_cons (to_bcontext Γ') x (to_bexpr A)
   end
 .
-
-Definition to_bk (k : kind) : bkind :=
-  match k with
-  | k_star => bk_star
-  | k_box => bk_box
-  end
-.
-
   
 Lemma size_expr_lt_size_body : forall n e A,
     size_body (b_anno e A) < S n -> size_expr e < n /\ size_expr A < n.

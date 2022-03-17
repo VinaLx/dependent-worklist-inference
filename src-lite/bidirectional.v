@@ -5,6 +5,7 @@ Require Import bidir.notations.
 Require Import bidir.properties.
 Require Import bidir.elaboration.
 Require Import transform_properties.
+Require Import ln_utils.
 
 Theorem bidir_complete1 : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
@@ -45,19 +46,69 @@ Proof.
   - admit.
 Admitted.
 
+
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
   → Γ' ⊢ e1' <: e2' ⇒ A'.
-Proof.
-  induction 1.
-  1-6: admit.
-  - admit.
-
-  - admit.
-  - admit.
-
-  - admit.
-  - admit.
+Proof with eauto with bidir.
+  intros.
+  pattern Γ, e1, e2, A, Γ', e1', e2', A', H.
+  apply usub_elab_mut with (
+    P0:= fun Γ Γ' (_ : wf_context_elab Γ Γ') => wf_bcontext Γ'); intros; try (constructor; auto; fail).
+  - econstructor; auto; eauto...
+  - econstructor; intros.
+    + econstructor; eauto...
+      * intros. inst_cofinites_with x. eapply bs_sub with (A:=B1' ^`' x)...
+    + eapply bs_pi_inf with (L:=L); eauto.
+      * inst_cofinites_with_new...
+      * intros. inst_cofinites_with x...
+      * intros. inst_cofinites_with x.
+        replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
+        eapply bidir_narrowing with (B:=A1'); simpl; eauto.
+    + eapply bs_pi_inf with (L:=L); eauto...
+      * intros. inst_cofinites_with x...
+        replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
+        eapply bidir_narrowing with (B:=A1'); simpl; eauto...
+  - econstructor; eauto... 
+  - econstructor; eauto...
+    + admit. (* monotype *)
+    + econstructor; intros.
+      * admit. (* type_correctness *)
+      * eapply bs_sub with (A:=A'0); eauto...
+        admit. (* type_correctness *)
+  - eapply bs_anno.
+    + eapply bs_bind.
+      * eauto...
+      * admit.  (* type_correctness *)
+      * intros. eapply bs_sub.
+        inst_cofinites_with x. eauto...
+        eauto...
+      * intros. simpl. admit. (* fv_eexpr *)
+      * intros. simpl. admit. (* fv_eexpr *)
+    + eapply bs_forall with (L:=L); eauto...
+      * intros. admit. (* type_correctness *)
+    + eapply bs_forall with (L:=L); eauto...
+      * intros. admit. (* type_correctness *)
+  - econstructor.
+    eapply bs_castup with (B:=B').
+    + eapply bidir_refl_l in H0. exact H0.
+    + admit. (* breduce *)
+    + eapply bs_sub with (A:=B'). auto. admit. (* type_correctness *)
+    + exact H0.
+    + exact H1.
+  - eapply bs_castdn with (A:=A'0). exact H0. admit. (* breduce *) auto.
+  - eapply bs_forall_l with (t:=t'); eauto...
+    + admit. (* monotype *)
+  - econstructor; eauto.
+  - eapply bs_forall; eauto.
+  - econstructor.
+    eapply bs_sub with (A:=A'0); eauto.
+    + admit. (* bidir_refl_r *)
+    + admit. (* bidir_refl_r *)
+  - econstructor.
+    + auto.
+    + admit. (* ctx_dom *)
+    + exact H1.
 Admitted.
 
 
