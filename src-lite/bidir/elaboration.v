@@ -221,15 +221,15 @@ with usub_elab
   -> usub_elab Γ e1 e2 (e_pi A B) Γ' e1' e2' (be_pi A' B')
   -> usub_elab Γ  (e_app  e1  t ) (e_app  e2  t ) (B  ^^  t )
               Γ' (be_app e1' t') (be_app e2' t') (B' ^^' t')
-| s_bind : forall L Γ Γ' A1 A1' e1 e1' B1 B1' A2 A2' e2 e2' B2 B2' k1 k2
+| s_bind : forall L Γ Γ' A1 A1' e1 e1' B1 B1' A2 A2' e2 e2' B2 B2' k1 
   , usub_elab Γ A1 A2 ⧼k1⧽ Γ' A1' A2' ⧼(to_bk k1)⧽'
   → usub_elab Γ A2 A1 ⧼k1⧽ Γ' A2' A1' ⧼(to_bk k1)⧽'
   → (forall x , x \notin L
-    → usub_elab (Γ , x : A1 ) (B1  ^`  x) (B2  ^`  x) ⧼k2⧽
-                (Γ','x : A1') (B1' ^`' x) (B2' ^`' x) ⧼(to_bk k2)⧽')
+    → usub_elab (Γ , x : A1 ) (B1  ^`  x) (B2  ^`  x) ⋆
+                (Γ','x : A1') (B1' ^`' x) (B2' ^`' x) ⋆')
   → (forall x , x \notin L
-    → usub_elab (Γ , x : A1 ) (B2  ^`  x) (B1  ^`  x) ⧼k2⧽
-                (Γ','x : A1') (B2' ^`' x) (B1' ^`' x) ⧼(to_bk k2)⧽')
+    → usub_elab (Γ , x : A1 ) (B2  ^`  x) (B1  ^`  x) ⋆
+                (Γ','x : A1') (B2' ^`' x) (B1' ^`' x) ⋆')
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))
@@ -288,3 +288,7 @@ with usub_elab
 Scheme usub_elab_mut := Induction for usub_elab Sort Prop
   with                  Induction for wf_context_elab Sort Prop. 
                                
+Scheme busub_elab_mut := Induction for busub_elab Sort Prop
+  with                   Induction for wf_bcontext_elab Sort Prop
+  with                   Induction for infer_app_elab Sort Prop
+  with                   Induction for greduce_elab Sort Prop.
