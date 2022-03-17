@@ -224,7 +224,7 @@ Proof.
   - clear_app_suffix; eauto 6 with inst_weakening.
   - clear_app_suffix; eauto 6 with inst_weakening.
   - eauto with inst_weakening.
-  - eauto with inst_weakening.
+  - eauto with inst_weakening. admit.
   - eauto with inst_weakening.
 
   (* inst_wl *)
@@ -247,7 +247,7 @@ Proof.
     inversion H1; subst. constructor; auto.
     + rewrite <- app_assoc; apply inst_e_weakening;
        now rewrite app_assoc.
-Qed.
+Admitted.
 
 Hint Resolve inst_wl_weakening : inst_weakening.
 
@@ -259,7 +259,8 @@ Proof.
   intros * H.
   dependent induction H; intros;
     clear_app_suffix; eauto 6 with inst_weakening.
-Qed.
+  admit.
+Admitted.
 
 Lemma bexpr_subst_open_comm : forall x v1 e v2
   , lc_bexpr v1 → x `notin` fv_bexpr v2
@@ -910,7 +911,7 @@ Proof.
   - simplify_list_eq. eauto 6 with inst_eq.
   - simplify_list_eq. eauto with inst_eq.
   - eauto with wf_ss inst_eq.
-  - eauto with wf_ss inst_eq.
+  - eauto with wf_ss inst_eq. admit.
   - eauto with wf_ss inst_eq.
 
   - simplify_list_eq. auto.
@@ -925,7 +926,7 @@ Proof.
   - conclude_ss_extend. simplify_list_eq.
     inversion H1; subst.
     eauto with inst_eq.
-Qed.
+Admitted.
 
 Hint Resolve inst_eq_inst_wl : inst_eq.
 
@@ -939,9 +940,9 @@ Proof.
   - simplify_list_eq. eauto 6 with inst_eq.
   - simplify_list_eq. eauto with inst_eq.
   - eauto 6 with wf_ss inst_eq.
+  - eauto 6 with wf_ss inst_eq. admit.
   - eauto 6 with wf_ss inst_eq.
-  - eauto 6 with wf_ss inst_eq.
-Qed.
+Admitted.
 
 Lemma subst_ss_fresh_equal : forall e x Θ,
     x `notin` fv_ss_inst Θ → inst_set (subst_ss e x Θ) = inst_set Θ.
@@ -1070,6 +1071,8 @@ Proof.
 
       * auto.
       * admit.
+      * admit.
+      * auto.
     + auto with inst_notin.
     + auto.
   - dependent destruction H2.

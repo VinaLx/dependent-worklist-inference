@@ -69,7 +69,7 @@ Theorem usub_elab_total : forall Γ e1 e2 A
 Proof.
   induction 1.
   1-14: admit.
-  - simpl. econstructor.
+  - simpl. admit. 
 Admitted.
 
 

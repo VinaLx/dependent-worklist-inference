@@ -71,9 +71,7 @@ Proof.
   (* bot check *)
   - admit.
   (* app *)
-  - f1 <: f2 ⇒ A
-    A . e ⇒ B
-    destruct IHwl_step as (Γ' & Θ & Inst & Solve).
+  - destruct IHwl_step as (Γ' & Θ & Inst & Solve).
     dependent destruction Inst.
     dependent destruction H0.
     dependent destruction Solve.
