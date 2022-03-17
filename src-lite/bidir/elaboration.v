@@ -17,22 +17,22 @@ Inductive wf_bcontext_elab : bcontext → context → Prop :=
   -> busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽
   -> wf_bcontext_elab (Γ' ,' x : A') (Γ, x : A)
 with infer_app_elab
-  : bcontext -> bexpr -> bexpr -> bexpr
-  -> expr → expr → Prop :=
+  : bcontext -> bexpr -> bexpr -> bexpr -> context 
+  -> expr -> expr → expr → Prop :=
 | iappe_pi : forall L Γ' Γ A' A B' B e' e k
   , (forall x, x \notin L
     -> busub_elab (Γ' ,' x : A') (B' ^`' x) (B' ^`' x) d_infer ⧼k⧽'
                  (Γ  ,  x : A ) (B  ^`  x) (B ^`  x) ⧼(to_k k)⧽)
   → busub_elab Γ' e' e' d_check A' Γ e e A
-  -> infer_app_elab Γ' (be_pi A' B') e' (B' ^^' e') e (B ^^ e)
+  -> infer_app_elab Γ' (be_pi A' B') e' (B' ^^' e') Γ (e_pi A B) e (B ^^ e)
 | iappe_all : forall L Γ' Γ A' A B' B e' e C' C t' t
   , mono_btype t'
   -> busub_elab Γ' t' t' d_check A' Γ t t A
   -> (forall x , x \notin  L
     -> busub_elab (Γ' ,' x : A') (B' ^`' x) (B' ^`' x) d_infer ⋆'
                  (Γ  ,  x : A ) (B  ^`  x) (B  ^`  x) ⋆)
-  -> infer_app_elab Γ' (B' ^^' t') e' C' e C
-  -> infer_app_elab Γ' (be_all A' B') e' C' e C
+  -> infer_app_elab Γ' (B' ^^' t') e' C' Γ (B ^^ t) e C
+  -> infer_app_elab Γ' (be_all A' B') e' C' Γ (e_all A B) e C
 with greduce_elab : bcontext -> bexpr -> bexpr → Prop :=
 | gre_reduce : forall Γ' e1 e2
   , lc_bcontext Γ'
@@ -88,7 +88,7 @@ with busub_elab
 | bse_app : forall Γ' Γ e1' e1 t' t e2' e2 B' B A' A
   , mono_btype t'
   -> busub_elab Γ' e1' e2' d_infer A' Γ e1 e2 A
-  -> infer_app_elab Γ' A' t' B' t B
+  -> infer_app_elab Γ' A' t' B' Γ A t B
   -> busub_elab Γ' (be_app e1' t') (be_app e2' t') d_infer B'
                Γ  ( e_app e1  t ) ( e_app e2  t ) B
 | bse_bind : forall L Γ' Γ e1' e1 e2' e2 A' A B' B k
