@@ -151,7 +151,7 @@ mono  bind  x . e
 
 % mono e
 % ---------------------- :: mu
-% mono mu x : A . e
+% mono mu x . e
 
 mono e
 -------------- :: castup
@@ -162,6 +162,7 @@ mono e
 mono castdn e
 
 mono e
+mono A
 -------------- :: anno
 mono e : A
 

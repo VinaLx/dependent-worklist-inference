@@ -47,10 +47,12 @@ Notation "G ⊢ e1 <: e2 ⇐ A" := (busub G e1 e2 d_check A)
 Notation "G ⊢ e ⇐ A" := (busub G e e d_check A)
     (at level 65, e at level 50, no associativity) : type_scope.
 
-Notation "G ⊢ A ⋅ e ⇒ B" :=
-  (infer_app G A e B)
-    ( at level 65, A at level 50, e at level 50
-    , no associativity) : type_scope.
+Notation "'Π' A , B" := (fun_pi A B)
+  (at level 55, A at level 50, right associativity).
+
+Notation "G ⊢ A '⇒Π' B , C" :=
+  (infer_app G A (fun_pi B C))
+    ( at level 65, A at level 50, no associativity) : type_scope.
 
 Notation "G ⊢ A ⟼ B" := (greduce G A B)
     (at level 65, A at level 50, no associativity) : type_scope.

@@ -17,6 +17,7 @@ ott : ${OTT_OUTS}
 
 %/ln_inf.v : %/ott.v
 	lngen --coq $@ --coq-ott $*.ott $*/language.ott
+	sed -f scripts/$*_ln_inf.sed -i "" $@ || true
 
 lngen : ${LNGEN_OUTS}
 

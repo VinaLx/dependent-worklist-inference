@@ -49,12 +49,16 @@ dworklist, wl :: 'dwl_' ::=
   | wl |- w      :: :: cons
   | wl ,' x :' A :: :: bind
 
+app_fun, F :: 'fun_' ::=
+  | Pi x : A . B :: :: pi (+ bind x in B +)
+
 formula :: formula_ ::=
   | judgement  ::   :: judgement
   | G |- e d A :: M :: bi_typing {{ coq (busub [[G]] [[e]] [[e]] [[d]] [[A]]) }}
   | x # G      :: M :: ctx_fresh {{ coq ([[x]] `notin` bctx_dom [[G]]) }}
   | x # e *    :: M :: erased_fresh
     {{ coq ([[x]] `notin` fv_eexpr (berase [[e]])) }}
+  | A = B :: M :: equality {{ coq [[A]] = [[B]] }}
 
 substitutions
   single e x :: subst
@@ -147,6 +151,7 @@ mono e
 mono castdn e
 
 mono e
+mono A
 ---------------------- :: anno
 mono e : A
 
@@ -220,20 +225,18 @@ G |- A => k
 |=> G , x : A
 
 defn
-G |- A . e =>> B :: :: infer_app :: 'iapp_'
+G |- A =>> F :: :: infer_app :: 'iapp_'
 by
 
 G , x : A |- B => k
-G |- e <= A
------------------------------------ :: pi
-G |- pi x : A. B . e =>> [e / x] B
+--------------------------------- :: pi
+G |- pi x : A. B =>> Pi x : A. B
 
 mono t
 G |- t <= A
-G , x : A |- B => *
-G |- [t / x] B . e =>> C
------------------------------------ :: all
-G |- forall x : A. B . e =>> C
+G |- [t / x] B =>> F
+-------------------------------- :: all
+G |- forall x : A. B =>> F
 
 defn
 G |- e1 -->> e2 :: :: greduce :: 'gr_'
@@ -286,14 +289,15 @@ G |- A1 => k1
 G |- A2 <: A1 => k1
 G , x : A1 |- B1 dir k2
 G , x : A2 |- B1 <: B2 dir k2
-------------------------------------------- :: pi_inf
+------------------------------------------- :: pi
 G |- pi x : A1. B1 <: pi x : A2. B2 dir k2
 
 mono t
 G |- e1 <: e2 => A
-G |- A . t =>> B
------------------------ :: app
-G |- e1 t <: e2 t => B
+G |- A =>> Pi x : B. C
+G |- t <= B
+-------------------------------- :: app
+G |- e1 t <: e2 t => [t / x] C
 
 G |- A => k
 G , x : A |- B  <: B => *

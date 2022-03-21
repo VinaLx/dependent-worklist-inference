@@ -95,6 +95,7 @@ mono int
 ----------- :: lit
 mono n
 
+mono A
 ----------------- :: bot
 mono bot : A
 
@@ -109,18 +110,24 @@ mono B
 mono pi x : A . B
 
 mono e
+mono A
+mono B
 -------------------------- :: lambda
 mono lambda x : A . e : B
 
 mono e
+mono A
+mono B
 ------------------------ :: bind
 mono bind x : A . e : B
 
 % mono e
+% mono A
 % ---------------------- :: mu
 % mono mu x : A . e
 
 mono e
+mono A
 ---------------------- :: castup
 mono castup [A] e
 

@@ -9,6 +9,11 @@ Definition to_k (bk : bkind) : kind :=
   end
 .
 
+Inductive decl_app_fun : Type :=
+| dfun_pi (A : expr) (B : expr)
+.
+
+
 Inductive wf_bcontext_elab : bcontext → context → Prop :=
 | wfe_nil : wf_bcontext_elab bctx_nil ctx_nil
 | wfe_cons : forall Γ' Γ x A' A k
@@ -17,22 +22,16 @@ Inductive wf_bcontext_elab : bcontext → context → Prop :=
   -> busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽
   -> wf_bcontext_elab (Γ' ,' x : A') (Γ, x : A)
 with infer_app_elab
-  : bcontext -> bexpr -> bexpr -> bexpr -> context 
-  -> expr -> expr → expr → Prop :=
-| iappe_pi : forall L Γ' Γ A' A B' B e' e k
-  , (forall x, x \notin L
-    -> busub_elab (Γ' ,' x : A') (B' ^`' x) (B' ^`' x) d_infer ⧼k⧽'
-                 (Γ  ,  x : A ) (B  ^`  x) (B ^`  x) ⧼(to_k k)⧽)
-  → busub_elab Γ' e' e' d_check A' Γ e e A
-  -> infer_app_elab Γ' (be_pi A' B') e' (B' ^^' e') Γ (e_pi A B) e (B ^^ e)
-| iappe_all : forall L Γ' Γ A' A B' B e' e C' C t' t
+  : bcontext -> bexpr → app_fun
+  ->  context ->  expr -> decl_app_fun → Prop :=
+| iappe_pi : forall L Γ' Γ A' A B' B k
+  , infer_app_elab Γ' (be_pi A' B') (fun_pi A' B')
+                   Γ  (e_pi A B)   (dfun_pi A B)
+| iappe_all : forall L Γ' Γ A' A B' B t' t F' F
   , mono_btype t'
   -> busub_elab Γ' t' t' d_check A' Γ t t A
-  -> (forall x , x \notin  L
-    -> busub_elab (Γ' ,' x : A') (B' ^`' x) (B' ^`' x) d_infer ⋆'
-                 (Γ  ,  x : A ) (B  ^`  x) (B  ^`  x) ⋆)
-  -> infer_app_elab Γ' (B' ^^' t') e' C' Γ (B ^^ t) e C
-  -> infer_app_elab Γ' (be_all A' B') e' C' Γ (e_all A B) e C
+  -> infer_app_elab Γ' (B' ^^' t')    F' Γ (B ^^ t)    F
+  -> infer_app_elab Γ' (be_all A' B') F' Γ (e_all A B) F
 with greduce_elab : bcontext -> bexpr -> bexpr → Prop :=
 | gre_reduce : forall Γ' e1 e2
   , lc_bcontext Γ'
@@ -85,12 +84,13 @@ with busub_elab
                  (Γ  ,  x : A2 ) (B1  ^`  x) (B2  ^`  x) ⧼(to_k k2)⧽)
   -> busub_elab Γ' (be_pi A1' B1') (be_pi A2' B2') dir ⧼k2⧽'
                Γ  ( e_pi A1  B1 ) ( e_pi A2  B2 ) ⧼(to_k k2)⧽
-| bse_app : forall Γ' Γ e1' e1 t' t e2' e2 B' B A' A
+| bse_app : forall Γ' Γ e1' e1 t' t e2' e2 A' A B' B C' C
   , mono_btype t'
   -> busub_elab Γ' e1' e2' d_infer A' Γ e1 e2 A
-  -> infer_app_elab Γ' A' t' B' Γ A t B
-  -> busub_elab Γ' (be_app e1' t') (be_app e2' t') d_infer B'
-               Γ  ( e_app e1  t ) ( e_app e2  t ) B
+  -> infer_app_elab Γ' A' (fun_pi B' C') Γ A (dfun_pi B C)
+  → busub_elab Γ' t' t' d_check B' Γ t t B
+  -> busub_elab Γ' (be_app e1' t') (be_app e2' t') d_infer (C' ^^' t')
+               Γ  ( e_app e1  t ) ( e_app e2  t ) (C ^^ t)
 | bse_bind : forall L Γ' Γ e1' e1 e2' e2 A' A B' B k
   , busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽
   -> (forall x , x \notin L
@@ -172,7 +172,7 @@ with usub_elab
   → bcontext → bexpr → bexpr → bexpr → Prop :=
 | s_var : forall Γ x A Γ' A'
   , wf_context_elab Γ Γ'
-  -> in_ctx x A Γ 
+  -> in_ctx x A Γ
   -> in_bctx x A' Γ'
   -> usub_elab Γ `x `x A Γ' `'x `'x A'
 | s_lit : forall Γ n Γ'
@@ -215,13 +215,14 @@ with usub_elab
                 (Γ','x : A2') (B1' ^`' x) (B2' ^`' x) ⧼(to_bk k2)⧽')
   → usub_elab Γ  (e_pi  A1  B1 ) (e_pi  A2  B2 ) ⧼k2⧽
               Γ' (be_pi A1' B1') (be_pi A2' B2') ⧼(to_bk k2)⧽'
-| s_app : forall Γ Γ' e1 e1' t t' e2 e2' A A' B B'
+| s_app : forall Γ Γ' e1 e1' t t' e2 e2' A A' B B' k
   , mono_type t
   -> usub_elab Γ t t A Γ' t' t' A'
   -> usub_elab Γ e1 e2 (e_pi A B) Γ' e1' e2' (be_pi A' B')
+  → usub_elab Γ A A ⧼k⧽ Γ' A' A' ⧼(to_bk k)⧽'
   -> usub_elab Γ  (e_app  e1  t ) (e_app  e2  t ) (B  ^^  t )
               Γ' (be_app e1' t') (be_app e2' t') (B' ^^' t')
-| s_bind : forall L Γ Γ' A1 A1' e1 e1' B1 B1' A2 A2' e2 e2' B2 B2' k1 
+| s_bind : forall L Γ Γ' A1 A1' e1 e1' B1 B1' A2 A2' e2 e2' B2 B2' k1
   , usub_elab Γ A1 A2 ⧼k1⧽ Γ' A1' A2' ⧼(to_bk k1)⧽'
   → usub_elab Γ A2 A1 ⧼k1⧽ Γ' A2' A1' ⧼(to_bk k1)⧽'
   → (forall x , x \notin L
@@ -233,10 +234,10 @@ with usub_elab
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))
-  -> ( forall x , x \notin  L  
-      -> ( x  `notin` fv_eexpr (erase (e1  ^`  x)))) 
-  -> ( forall x , x \notin  L  
-      -> ( x  `notin` fv_eexpr (erase (e2  ^`  x)))) 
+  -> ( forall x , x \notin  L
+      -> ( x  `notin` fv_eexpr (erase (e1  ^`  x))))
+  -> ( forall x , x \notin  L
+      -> ( x  `notin` fv_eexpr (erase (e2  ^`  x))))
   → usub_elab Γ (Λ A1, e1 : B1) (Λ A2, e2 : B2) (e_all A1 B1)
               Γ' (be_bind e1' ::' be_all A1' B1')
                  (be_bind e1' ::' be_all A2' B2') (be_all A1' B1')
@@ -281,14 +282,17 @@ with usub_elab
 | s_sub : forall Γ Γ' e1 e2 B A e1' e2' B' A' k
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
   -> usub_elab Γ A B ⧼k⧽ Γ' A' B' ⧼(to_bk k)⧽'
+  → usub_elab Γ B B ⧼k⧽ Γ' B' B' ⧼(to_bk k)⧽'
   -> usub_elab Γ e1 e2 B Γ' (e1' ::' B') (e2' ::' B') B'.
 
 
 
-Scheme usub_elab_mut := Induction for usub_elab Sort Prop
-  with                  Induction for wf_context_elab Sort Prop. 
-                               
-Scheme busub_elab_mut := Induction for busub_elab Sort Prop
-  with                   Induction for wf_bcontext_elab Sort Prop
-  with                   Induction for infer_app_elab Sort Prop
-  with                   Induction for greduce_elab Sort Prop.
+Scheme usub_elab_mut
+  :=   Induction for usub_elab Sort Prop
+  with Induction for wf_context_elab Sort Prop.
+
+Scheme busub_elab_mut
+  :=   Induction for busub_elab Sort Prop
+  with Induction for wf_bcontext_elab Sort Prop
+  with Induction for infer_app_elab Sort Prop
+  with Induction for greduce_elab Sort Prop.
