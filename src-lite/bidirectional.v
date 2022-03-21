@@ -8,7 +8,7 @@ Require Import bidir.elaboration.
 Require Import transform_properties.
 Require Import ln_utils.
 
-Theorem bidir_complete1 : forall Γ e1 e2 A
+(* Theorem bidir_complete1 : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
   → to_bcontext Γ ⊢ to_bexpr e1 <: to_bexpr e2 ⇒ to_bexpr A.
 Proof.
@@ -22,16 +22,16 @@ Proof.
 (*
   1-14: admit.
   - admit. *)
-Admitted.
+Admitted. *)
 
-Theorem bidir_complete2 : forall Γ e1 e2 A
+(* Theorem bidir_complete2 : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
   → to_bcontext Γ ⊢ to_bexpr e1 <: to_bexpr e2 ⇐ to_bexpr A.
 Proof.
   induction 1.
   1-7: admit.
   - admit.
-Admitted.
+Admitted. *)
 
 (* dummy condition *)
 Definition ctx_condition : context → bcontext → Prop := fun c c' => True.
@@ -127,13 +127,13 @@ Proof with eauto with bidir.
   - econstructor; intros.
     + econstructor; eauto...
       * intros. inst_cofinites_with x. eapply bs_sub with (A:=B1' ^`' x)...
-    + eapply bs_pi_inf with (L:=L); eauto.
+    + eapply bs_pi with (L:=L); eauto.
       * inst_cofinites_with_new...
       * intros. inst_cofinites_with x...
       * intros. inst_cofinites_with x.
         replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
         eapply bidir_narrowing with (B:=A1'); simpl; eauto.
-    + eapply bs_pi_inf with (L:=L); eauto...
+    + eapply bs_pi with (L:=L); eauto...
       * intros. inst_cofinites_with x...
         replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
         eapply bidir_narrowing with (B:=A1'); simpl; eauto...
@@ -142,8 +142,6 @@ Proof with eauto with bidir.
     + eapply usub_elab_keeps_mono; eauto.
     + eapply iapp_pi with (k:=bk_star); intros.
       * admit. (* type_correctness *)
-      * eapply bs_sub with (A:=A'0); eauto...
-        admit. (* type_correctness *)
   - eapply bs_anno.
     + eapply bs_bind with (L:=L).
       * eauto...
@@ -167,10 +165,7 @@ Proof with eauto with bidir.
     + eapply usub_elab_keeps_mono; eauto. 
   - econstructor; eauto.
   - eapply bs_forall; eauto.
-  - econstructor. 
-    eapply bs_sub with (A:=A'0); eauto.
-    + admit. (* bidir_refl_r *)
-    + admit. (* bidir_refl_r *)
+  - econstructor; eauto. 
   - econstructor.
     + auto.
     + admit. (* ctx_dom *)

@@ -1,4 +1,5 @@
 Require Export decl.notations.
+Require Import ln_utils.
 Require Import Program.Tactics.
 Require Export Coq.Program.Equality.
 
@@ -34,7 +35,11 @@ Scheme wf_mut   := Induction for wf_context  Sort Prop
 Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
 Proof.
-  intros. induction H; auto.
+  intros. induction H; auto. 
+  - inst_cofinites_with_new; eapply lc_e_abs_exists with (x1:=x); auto.
+    constructor; auto.
+  - inst_cofinites_with_new; eapply lc_e_bind_exists with (x1:=x); auto.
+    constructor; auto.
 Qed.
 
   

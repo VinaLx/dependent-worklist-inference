@@ -89,7 +89,7 @@ Proof.
   - econstructor. eapply IHHsub; auto. auto.
     intros. specialize (H2 x H3). admit. admit.
   - econstructor. eapply IHHsub1; auto. eapply IHHsub2; auto. auto. admit. admit.
-  - econstructor. auto. admit. admit. (* *** *)
+  - econstructor. auto. admit. admit. admit. (* *** *)
   - econstructor.
 Admitted.
 
