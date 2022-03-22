@@ -47,73 +47,37 @@ Proof.
   - admit.
 Admitted.
 
-Ltac solve_trivial_mono_or_lc :=
-  match goal with
-  | H : mono_type ?P |- _ => dependent destruction H; eauto; fail
-  | H : lc_expr ?P |- _ => dependent destruction H; eauto; fail                                                           
-  end.
+Ltac destruct_mono :=
+  repeat
+    match goal with
+    | H : mono_type (?P ?x) |- _ => dependent destruction H
+    end.
 
+Ltac solve_trivial_mono := 
+  destruct_mono; econstructor; intuition; eauto; fail.
+
+Ltac usub_elab_keeps_mono_impl H L L0 L1 := 
+  apply H with (L:=(L `union` L0 `union` L1)); try (intuition; fail); intros x Hx; inst_cofinites_with x; destruct_conjs; intuition.
 
 Lemma usub_elab_keeps_mono : forall Γ e1 e2 A Γ' e1' e2' A',
-    usub_elab Γ e1 e2 A Γ' e1' e2' A' ->
-        (mono_type e1 /\ mono_type e2 -> mono_btype e1' /\ mono_btype e2') /\ lc_bexpr e1' /\ lc_bexpr e2'.
+   usub_elab Γ e1 e2 A Γ' e1' e2' A' ->
+       (mono_type e1 /\ mono_type e2 -> mono_btype e1' /\ mono_btype e2').
 Proof.
-  intros.
-  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_mono_or_lc.
-  - dependent destruction H7. dependent destruction H16.
-    constructor.
-    + dependent destruction H8. dependent destruction H18.
-      inst_cofinites_with_new.
-      eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto.
-    + eapply bmono_lambda with (L:=(L `union` L0 `union` L1)).
-      intros. inst_cofinites_with x. destruct_conjs. intuition.
-  - dependent destruction H7. dependent destruction H16.
-    constructor.
-    + dependent destruction H8. dependent destruction H18.
-      inst_cofinites_with_new.
-      eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto.
-    + eapply bmono_lambda with (L:=(L `union` L0 `union` L1)).
-      intros. inst_cofinites_with x. destruct_conjs. intuition.
-  - constructor; inst_cofinites_with_new. eapply lc_be_abs_exists with (x1:=x). destruct_conjs. auto.
-    eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto.
-  - constructor; inst_cofinites_with_new. eapply lc_be_abs_exists with (x1:=x). destruct_conjs. auto.
-    eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto. 
-  - dependent destruction H5. dependent destruction H13. eapply bmono_pi with (L:=L `union` L0 `union` L1).
-    + intuition. 
-    + intros. inst_cofinites_with x. destruct_conjs. intuition. 
-  - dependent destruction H5. dependent destruction H13. eapply bmono_pi with (L:=L `union` L0 `union` L1).
-    + intuition. 
-    + intros. inst_cofinites_with x. destruct_conjs. intuition. 
-  - inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto.
-  - inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); destruct_conjs; auto.
-  - dependent destruction H2. dependent destruction H3. constructor; intuition.
-  - dependent destruction H2. dependent destruction H3. constructor; intuition.
-  - dependent destruction H9. dependent destruction H18.
-    econstructor.
-    + inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); intuition.
-    + eapply bmono_bind with (L:=L `union` L0 `union` L1). intros. inst_cofinites_with x. intuition.
-  - dependent destruction H9. dependent destruction H18.
-    econstructor.
-    + inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); intuition.
-    + eapply bmono_bind with (L:=L `union` L0 `union` L1). intros. inst_cofinites_with x. intuition.
-  - econstructor.
-    + inst_cofinites_with_new. apply lc_be_bind_exists with (x1:=x). destruct_conjs. auto.
-    + inst_cofinites_with_new. apply lc_be_all_exists with (x1:=x); destruct_conjs; auto.
-  - econstructor.
-    + inst_cofinites_with_new. apply lc_be_bind_exists with (x1:=x). destruct_conjs. auto.
-    + inst_cofinites_with_new. apply lc_be_all_exists with (x1:=x); destruct_conjs; auto.
-  - dependent destruction H4. dependent destruction H15. constructor; intuition.
-  - dependent destruction H4. dependent destruction H15. constructor; intuition.
-  - dependent destruction H2. dependent destruction H3. constructor; intuition.
-  - dependent destruction H2. dependent destruction H3. constructor; intuition.
-  - inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); destruct_conjs; auto. 
-  - inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); destruct_conjs; auto. 
-  - inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); destruct_conjs; auto. 
-  - inst_cofinites_with_new. eapply lc_be_all_exists with (x1:=x); destruct_conjs; auto. 
-  - constructor; intuition.
-  - constructor; intuition.
-Qed. 
-
+ intros.
+ induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_mono.
+ - destruct_mono. econstructor.
+   + destruct_mono. usub_elab_keeps_mono_impl bmono_lambda L L0 L1.
+   + destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
+  - destruct_mono. econstructor.
+    + usub_elab_keeps_mono_impl bmono_lambda L L0 L1.
+    + usub_elab_keeps_mono_impl bmono_pi L L0 L1.
+  - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
+  - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
+  - admit.
+  - admit.
+  - constructor; intuition. admit.
+  - constructor; intuition. admit.
+Admitted.
 
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
