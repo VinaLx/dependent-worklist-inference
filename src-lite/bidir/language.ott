@@ -228,7 +228,6 @@ defn
 G |- A =>> F :: :: infer_app :: 'iapp_'
 by
 
-G , x : A |- B => k
 --------------------------------- :: pi
 G |- pi x : A. B =>> Pi x : A. B
 

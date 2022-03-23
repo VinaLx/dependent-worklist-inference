@@ -73,11 +73,27 @@ Proof.
     + usub_elab_keeps_mono_impl bmono_pi L L0 L1.
   - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
   - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - admit.
+  - destruct_mono. admit.
   - admit.
   - constructor; intuition. admit.
   - constructor; intuition. admit.
 Admitted.
+
+
+Ltac simpl_auto_impl := simpl in *; auto; fail.
+
+Lemma usub_elab_keeps_feexpr : forall Γ e1 e2 A Γ' e1' e2' A' x,
+   usub_elab Γ e1 e2 A Γ' e1' e2' A' -> x `notin` ott.fv_eexpr (erase e1) ->  x `notin` ott.fv_eexpr (berase e1').
+Proof.
+  intros.
+  induction H; try simpl_auto_impl. 
+  - admit.
+  - admit. 
+  - admit.
+  - admit.
+  - admit.
+Admitted.
+
 
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
@@ -104,8 +120,7 @@ Proof with eauto with bidir.
   - econstructor; eauto... 
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
-    + eapply iapp_pi with (k:=bk_star); intros.
-      * admit. (* type_correctness *)
+    + constructor; admit.
   - eapply bs_anno.
     + eapply bs_bind with (L:=L).
       * eauto...
@@ -137,9 +152,8 @@ Proof with eauto with bidir.
 Admitted.
 
 
-
 (* completeness / totality of elaboration system *)
-Theorem usub_elab_total : forall Γ e1 e2 A
+(* Theorem usub_elab_total : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
   → usub_elab Γ e1 e2 A
               (to_bcontext Γ) (to_bexpr e1) (to_bexpr e2) (to_bexpr A).
@@ -147,7 +161,7 @@ Proof.
   induction 1.
   1-14: admit.
   - simpl. admit. 
-Admitted.
+Admitted. *)
 
 
 Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
@@ -157,21 +171,24 @@ Proof.
   pattern Γ', e1', e2', d, A', Γ, e1, e2, A, H.
   eapply busub_elab_mut with
     (P0 := fun Γ' Γ (_ : wf_bcontext_elab Γ' Γ) => ⊢ Γ )
-    (P1 := fun Γ' A' t' B' Γ A t B (_ : infer_app_elab Γ' A' t' B' Γ A t B) =>
-      exists D E, B = E ^^ t /\ Γ ⊢ t : D /\ (Γ ⊢ A <: e_pi D E : ⋆ \/ A = e_pi D E)
+    (P1 := fun Γ' A' F' Γ A F  (_ : infer_app_elab Γ' A' F' Γ A F) =>
+      match F with 
+      | dfun_pi B C => 
+        match A with 
+        | e_pi B' C' => True
+        | e_all B' C' => Γ ⊢ A <: e_pi B C : ⋆ 
+        | _ => False
+        end  
+      end
     )
     (P2 := fun Γ' A' B' (_ : greduce_elab Γ' A' B') => True);
     intros; try (constructor; auto; fail).
   - eauto.
   - eauto.
   - eauto.
-  - destruct H1 as [D [E]]. destruct_conjs.
-    rewrite H1. econstructor.
-    + admit. (* monotype *)
-    + eauto.
-    + inversion H3.
-      * econstructor; eauto.
-      * rewrite <- H4. auto.
+  - dependent destruction i.
+    + econstructor. admit. eauto. auto.
+    + econstructor. admit. eauto. eapply ott.s_sub; eauto.
   - econstructor; eauto.
     + intros. admit. (* fv_eexpr *)
     + intros. admit. (* fv_eexpr *)
@@ -194,14 +211,9 @@ Proof.
   - eapply ott.s_sub; eauto.
   - econstructor; eauto.
     + admit. (* ctx_dom *)
-  - exists A0, B. auto.
-  - destruct H2 as [D [E ]]. exists D, E. destruct_conjs. repeat split; auto.
-    inversion H4; left; eapply ott.s_forall_l with (t:=t); eauto.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
-    + rewrite <- H5. admit.
+  - dependent destruction F. dependent destruction i.
+    + rewrite x. rewrite <- x in H1. econstructor; assert (mono_type t) by admit; eauto; admit.  
+    + rewrite <- x in H3. econstructor; assert (mono_type t) by admit; eauto. admit. rewrite <- x. auto. admit.
 Admitted.
 
 
