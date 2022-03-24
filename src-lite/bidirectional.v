@@ -79,6 +79,36 @@ Proof.
   - constructor; intuition. admit.  (* *** *)
 Admitted.
 
+Scheme expr_ind_mut 
+    := Induction for expr Sort Prop
+  with Induction for body Sort Prop.
+
+Lemma open_keeps_erase_efv : forall x x' e n0,
+  x <> x' -> x `notin` ott.fv_eexpr (erase e) <->  x `notin` ott.fv_eexpr (erase (open_expr_wrt_expr_rec n0 `x' e)).
+Proof.
+  intros; split; intros. 
+  - induction e; auto.
+    + simpl; destruct (lt_eq_lt_dec n n0); simpl.
+      * destruct s; simpl; auto.
+      * auto.
+    + simpl in *. admit.
+    + destruct b. simpl in *. admit.
+    + simpl in *. admit.
+    + destruct b; simpl in *. admit.
+    + simpl in *. auto. admit.
+  - induction e; auto.
+    + simpl in *. admit.
+    + destruct b. simpl in *. admit. 
+    + simpl in *. admit.
+    + destruct b. simpl in *. admit.
+    + simpl in *. auto. admit.
+Admitted.
+
+
+Lemma open_keeps_berase_befv : forall x x' e n0,
+  x <> x' -> x `notin` ott.fv_eexpr (berase e) <->  x `notin` ott.fv_eexpr (berase (open_bexpr_wrt_bexpr_rec n0 `'x' e)).
+Proof.
+Admitted.
 
 Ltac simpl_auto_impl := simpl in *; auto; fail.
 
@@ -86,7 +116,9 @@ Lemma usub_elab_keeps_feexpr : forall Γ e1 e2 A Γ' e1' e2' A' x,
    usub_elab Γ e1 e2 A Γ' e1' e2' A' -> x `notin` ott.fv_eexpr (erase e1) ->  x `notin` ott.fv_eexpr (berase e1').
 Proof.
   intros.
-  induction H; try simpl_auto_impl; admit. (* *** *)
+  induction H; try simpl_auto_impl.
+  - simpl in *. inst_cofinites_by (add x L). eapply open_keeps_erase_efv with (x':=x0) (n0:=0) in H0. 
+    specialize (H7 H0). eapply open_keeps_berase_befv with (n0:=0). admit. exact H7. admit.
 Admitted.
 
 Lemma wf_context_elab_same_dom : forall Γ Γ',
@@ -177,7 +209,29 @@ Lemma busub_elab_keeps_mono : forall Γ' e1' e2' d A' Γ e1 e2 A,
        (mono_btype e1' /\ mono_btype e2' -> mono_type e1 /\ mono_type e2).
 Proof.
   intros.
-  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_bmono; admit.  (* *** *)
+  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_bmono.
+  - econstructor. admit. (* *** *)
+  - econstructor. admit. (* *** *)
+  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
+    + admit. (* *** *)
+    + admit. (* *** *)
+  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
+    + admit. (* *** *)
+    + admit. (* *** *)
+  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
+  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
+  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition. 
+    + admit. (* *** *)
+    + admit. (* *** *)
+  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition. 
+    + admit. (* *** *)
+    + admit. (* *** *)
+  - destruct_bmono. constructor. intuition. admit. (* *** *)
+  - destruct_bmono. constructor. intuition. admit. (* *** *)
+  - destruct_bmono; intuition.
+  - destruct_bmono; intuition.
+  - intuition.
+  - intuition.
 Admitted.
 
 
@@ -200,7 +254,7 @@ Proof.
       | dfun_pi B C => 
         match A with 
         | e_pi _ _ => True
-        | e_all _ _ => Γ ⊢ A <: e_pi B C : ⋆ 
+        | e_all _ _ => Γ ⊢ A : ⋆ -> Γ ⊢ A <: e_pi B C : ⋆
         | _ => False
         end  
       end
@@ -212,7 +266,8 @@ Proof.
   - eauto.
   - dependent destruction i.
     + econstructor. admit. eauto. auto.
-    + econstructor. admit. eauto. eapply ott.s_sub; eauto.
+    + assert (Γ0 ⊢ e_all A0 B0 : ⧼ k_star ⧽) as Htc by admit. specialize (H3 Htc).
+      econstructor. admit. eauto. eapply ott.s_sub; eauto. 
   - econstructor; eauto.
     + intros. admit. (* fv_eexpr *)
     + intros. admit. (* fv_eexpr *)
@@ -236,8 +291,20 @@ Proof.
   - econstructor; eauto.
     + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
   - dependent destruction F. dependent destruction i.
-    + rewrite x. rewrite <- x in H1. econstructor; assert (mono_type t) by admit; eauto; admit. (* *** *)
-    + rewrite <- x in H3. econstructor; assert (mono_type t) by admit; eauto. admit. rewrite <- x. auto. admit.
+    + intros. rewrite x. econstructor.
+      * admit.
+      * admit.
+      * eauto.
+      * admit.
+      * admit.
+    + intros. rewrite <- x in H3.
+      assert (Γ0 ⊢ B ^^ t: ⧼ k_star ⧽) by admit.
+      rewrite <- x in H5. specialize (H3 H5). econstructor.
+      * admit.
+      * admit.
+      * eauto.
+      * rewrite <- x. auto.
+      * admit.
 Admitted.
 
 
