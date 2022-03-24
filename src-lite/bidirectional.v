@@ -73,10 +73,10 @@ Proof.
     + usub_elab_keeps_mono_impl bmono_pi L L0 L1.
   - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
   - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - destruct_mono. admit.
-  - admit.
-  - constructor; intuition. admit.
-  - constructor; intuition. admit.
+  - destruct_mono. admit.  (* *** *)
+  - admit.  (* *** *)
+  - constructor; intuition. admit.  (* *** *)
+  - constructor; intuition. admit.  (* *** *)
 Admitted.
 
 
@@ -86,13 +86,15 @@ Lemma usub_elab_keeps_feexpr : forall Γ e1 e2 A Γ' e1' e2' A' x,
    usub_elab Γ e1 e2 A Γ' e1' e2' A' -> x `notin` ott.fv_eexpr (erase e1) ->  x `notin` ott.fv_eexpr (berase e1').
 Proof.
   intros.
-  induction H; try simpl_auto_impl. 
-  - admit.
-  - admit. 
-  - admit.
-  - admit.
-  - admit.
+  induction H; try simpl_auto_impl; admit. (* *** *)
 Admitted.
+
+Lemma wf_context_elab_same_dom : forall Γ Γ',
+    wf_context_elab Γ Γ' -> ctx_dom Γ = bctx_dom Γ'.
+Proof.
+  intros. induction H; auto.
+  simpl. rewrite IHwf_context_elab; auto.
+Qed.
 
 
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
@@ -145,10 +147,8 @@ Proof with eauto with bidir.
   - econstructor; eauto.
   - eapply bs_forall; eauto.
   - econstructor; eauto. 
-  - econstructor.
-    + auto.
-    + admit. (* ctx_dom *)
-    + exact H1.
+  - econstructor; eauto.
+    + rewrite <- (wf_context_elab_same_dom Γ0 Γ'0); auto.
 Admitted.
 
 
@@ -163,6 +163,30 @@ Proof.
   - simpl. admit. 
 Admitted. *)
 
+Ltac destruct_bmono :=
+  repeat
+    match goal with
+    | H : mono_btype (?P ?x) |- _ => dependent destruction H
+    end.
+
+Ltac solve_trivial_bmono := 
+    destruct_bmono; econstructor; intuition; eauto; fail.   
+
+Lemma busub_elab_keeps_mono : forall Γ' e1' e2' d A' Γ e1 e2 A,
+   busub_elab Γ' e1' e2' d A' Γ e1 e2 A ->
+       (mono_btype e1' /\ mono_btype e2' -> mono_type e1 /\ mono_type e2).
+Proof.
+  intros.
+  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_bmono; admit.  (* *** *)
+Admitted.
+
+
+Lemma wf_bcontext_elab_same_dom : forall Γ' Γ,
+    wf_bcontext_elab Γ' Γ -> bctx_dom Γ' =  ctx_dom Γ.
+Proof.
+  intros. induction H; auto.
+  simpl. rewrite IHwf_bcontext_elab; auto.
+Qed.
 
 Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
     busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
@@ -175,8 +199,8 @@ Proof.
       match F with 
       | dfun_pi B C => 
         match A with 
-        | e_pi B' C' => True
-        | e_all B' C' => Γ ⊢ A <: e_pi B C : ⋆ 
+        | e_pi _ _ => True
+        | e_all _ _ => Γ ⊢ A <: e_pi B C : ⋆ 
         | _ => False
         end  
       end
@@ -210,9 +234,9 @@ Proof.
   - auto.
   - eapply ott.s_sub; eauto.
   - econstructor; eauto.
-    + admit. (* ctx_dom *)
+    + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
   - dependent destruction F. dependent destruction i.
-    + rewrite x. rewrite <- x in H1. econstructor; assert (mono_type t) by admit; eauto; admit.  
+    + rewrite x. rewrite <- x in H1. econstructor; assert (mono_type t) by admit; eauto; admit. (* *** *)
     + rewrite <- x in H3. econstructor; assert (mono_type t) by admit; eauto. admit. rewrite <- x. auto. admit.
 Admitted.
 
