@@ -8,6 +8,7 @@ Require Import bidir.elaboration.
 Require Import transform_properties.
 Require Import ln_utils.
 
+
 (* Theorem bidir_complete1 : forall Γ e1 e2 A
   , Γ ⊢ e1 <: e2 : A
   → to_bcontext Γ ⊢ to_bexpr e1 <: to_bexpr e2 ⇒ to_bexpr A.
@@ -128,6 +129,8 @@ Proof.
   simpl. rewrite IHwf_context_elab; auto.
 Qed.
 
+Check busub_ind.
+
 
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
@@ -154,7 +157,7 @@ Proof with eauto with bidir.
   - econstructor; eauto... 
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
-    + constructor; admit.
+    + constructor. admit.
   - eapply bs_anno.
     + eapply bs_bind with (L:=L).
       * eauto...
@@ -235,6 +238,18 @@ Proof.
 Admitted.
 
 
+Lemma inv_forall : forall Γ A B x,
+  Γ ⊢ e_all A B : ⋆ ->  exists L, x `notin` L -> Γ, x : A ⊢ B ^^ `x :  ⋆.
+Proof.
+  intros.
+  dependent induction H.
+  - exists L. intros. eauto. 
+  - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
+  - exists L. intros. eauto.
+  - eapply star_sub_inversion_l in H0. 
+    specialize (IHusub1 A B (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). auto.
+Qed.
+
 Lemma wf_bcontext_elab_same_dom : forall Γ' Γ,
     wf_bcontext_elab Γ' Γ -> bctx_dom Γ' =  ctx_dom Γ.
 Proof.
@@ -279,7 +294,7 @@ Proof.
     + admit. (* P2 breduce *)
     + eauto.
   - eapply ott.s_forall_l with (t:=t).
-    + admit. (* monotype *)
+    + eapply busub_elab_keeps_mono; eauto.
     + eauto.
     + eauto.
     + auto.
@@ -291,8 +306,9 @@ Proof.
   - econstructor; eauto.
     + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
   - dependent destruction F. dependent destruction i.
-    + intros. rewrite x. econstructor.
-      * admit.
+    + intros. rewrite x.
+      eapply ott.s_forall_l with (t:=t).
+      * eapply busub_elab_keeps_mono; eauto.
       * admit.
       * eauto.
       * admit.

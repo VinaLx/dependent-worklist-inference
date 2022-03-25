@@ -304,3 +304,6 @@ Proof.
 Qed.
 
 
+Lemma star_sub_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> A = ⋆.
+Admitted.

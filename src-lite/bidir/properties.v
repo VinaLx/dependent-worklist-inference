@@ -1,6 +1,8 @@
 Require Import decl.notations.
 Require Export bidir.notations.
 Require Import bidir.elaboration.
+Require Import ln_utils.
+Require Import Coq.Program.Tactics.
 Require Import Coq.Program.Equality.
 
 Scheme Induction for busub Sort Prop
@@ -16,14 +18,54 @@ Proof.
   intros. dependent induction H; eauto.
 Admitted.
 
+
+Scheme  wf_bcontext_lc_mut := Induction for wf_bcontext Sort Prop
+  with  busub_lc_mut       := Induction for busub       Sort Prop
+  with  infer_app_lc_mut   := Induction for infer_app   Sort Prop.
+
+Check wf_bcontext_lc_mut.
+
+Ltac solve_lcb := 
+  match goal with 
+  | _ : _ |- lc_bexpr (be_abs ?e) => inst_cofinites_with_new; eapply lc_be_abs_exists; destruct_conjs; eauto
+  | _ : _ |- lc_bexpr (be_pi ?A ?B ) => inst_cofinites_with_new; eapply lc_be_pi_exists; destruct_conjs; eauto
+  | _ : _ |- lc_bexpr (be_bind ?e) => inst_cofinites_with_new; eapply lc_be_bind_exists; destruct_conjs; eauto
+  | _ : _ |- lc_bexpr (be_all ?A ?B ) => inst_cofinites_with_new; eapply lc_be_all_exists; destruct_conjs; eauto
+  end.
+
+
+Lemma bwf_lc : forall Γ',
+  ⫦ Γ' -> lc_bcontext Γ'.
+Proof.
+  intros.
+  pattern Γ', H.
+  eapply wf_bcontext_lc_mut with 
+  (P0 := 
+    fun Γ' e1' e2' d A' (_ : busub Γ' e1' e2' d A') => lc_bexpr e1' /\ lc_bexpr e2' /\ lc_bexpr A'
+  )
+  (P1 := fun Γ' A' F' (_ : infer_app Γ' A' F') => 
+    match F' with 
+    | fun_pi B C => forall x, lc_bexpr (C ^^' `'x)
+    end
+  )
+  ; intros; try (intuition; fail); repeat split; auto; try solve_lcb.
+  - induction i; auto. dependent destruction H0. dependent destruction w. auto.
+  - intuition.
+  - intuition.
+  - dependent destruction l0. auto.
+Qed.
+
+Lemma bidir_lc : forall Γ' e1' e2' A',
+  Γ' ⊢ e1' <: e2' ⇒ A' -> lc_bcontext Γ' /\ lc_bexpr e1' /\ lc_bexpr e2'.
+Proof.
+  intros.
+  induction H; try (intuition; fail); repeat split; auto; try solve_lcb; intuition; eapply bwf_lc; auto.
+Qed.
+
+
 Scheme busub_refl_mut := Induction for busub     Sort Prop
   with  iapp_refl_mut := Induction for infer_app Sort Prop.
 
-Theorem bidir_type_correctness : forall Γ e1 e2 A,
-    Γ ⊢ e1 <: e2 ⇒ A -> A = ◻' \/ exists k, Γ ⊢ A ⇒ k.
-Proof.
-  intros.
-Admitted.
 
 Theorem bidir_refl_l : forall Γ e1 e2 d A,
   busub Γ e1 e2 d A -> busub Γ e1 e1 d A.
