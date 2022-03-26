@@ -19,11 +19,9 @@ Proof.
 Admitted.
 
 
-Scheme  wf_bcontext_lc_mut := Induction for wf_bcontext Sort Prop
-  with  busub_lc_mut       := Induction for busub       Sort Prop
-  with  infer_app_lc_mut   := Induction for infer_app   Sort Prop.
-
-Check wf_bcontext_lc_mut.
+Scheme  bwf_context_lc_mut     := Induction for wf_bcontext Sort Prop
+  with  busub_bwf_lc_mut       := Induction for busub       Sort Prop
+  with  infer_app_bwf_lc_mut   := Induction for infer_app   Sort Prop.
 
 Ltac solve_lcb := 
   match goal with 
@@ -39,27 +37,43 @@ Lemma bwf_lc : forall Γ',
 Proof.
   intros.
   pattern Γ', H.
-  eapply wf_bcontext_lc_mut with 
-  (P0 := 
-    fun Γ' e1' e2' d A' (_ : busub Γ' e1' e2' d A') => lc_bexpr e1' /\ lc_bexpr e2' /\ lc_bexpr A'
+  eapply bwf_context_lc_mut with 
+  (P0 := fun Γ' e1' e2' d A' (_ : busub Γ' e1' e2' d A') => 
+    lc_bexpr e1' /\ lc_bexpr e2' /\ lc_bexpr A'
   )
   (P1 := fun Γ' A' F' (_ : infer_app Γ' A' F') => 
     match F' with 
     | fun_pi B C => forall x, lc_bexpr (C ^^' `'x)
     end
-  )
-  ; intros; try (intuition; fail); repeat split; auto; try solve_lcb.
+  ); 
+  intros; try (intuition; fail); repeat split; auto; try solve_lcb.
   - induction i; auto. dependent destruction H0. dependent destruction w. auto.
   - intuition.
   - intuition.
   - dependent destruction l0. auto.
 Qed.
 
-Lemma bidir_lc : forall Γ' e1' e2' A',
-  Γ' ⊢ e1' <: e2' ⇒ A' -> lc_bcontext Γ' /\ lc_bexpr e1' /\ lc_bexpr e2'.
+Scheme  busub_lc_mut           := Induction for busub       Sort Prop
+  with  infer_app_busub_lc_mut := Induction for infer_app   Sort Prop.
+
+Lemma busub_all_lc : forall Γ' e1' e2' d' A',
+  busub Γ' e1' e2' d' A' -> lc_bcontext Γ' /\ lc_bexpr e1' /\ lc_bexpr e2' /\ lc_bexpr A'.
 Proof.
   intros.
-  induction H; try (intuition; fail); repeat split; auto; try solve_lcb; intuition; eapply bwf_lc; auto.
+  pattern Γ', e1', e2', d', A', H.
+  eapply busub_lc_mut with 
+  (P0 := fun Γ' A' F' (_ : infer_app Γ' A' F') => 
+    match F' with 
+    | fun_pi B C => forall x, lc_bexpr (C ^^' `'x)
+    end
+  );
+  try (intuition; fail); repeat split; auto; try solve_lcb; intuition.
+  + eapply bwf_lc; eauto. 
+  + induction i; auto. dependent destruction w.  auto.
+  + eapply bwf_lc; eauto.
+  + eapply bwf_lc; eauto.
+  + eapply bwf_lc; eauto.
+  + dependent destruction l0. auto.
 Qed.
 
 

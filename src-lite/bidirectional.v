@@ -84,43 +84,76 @@ Scheme expr_ind_mut
     := Induction for expr Sort Prop
   with Induction for body Sort Prop.
 
-Lemma open_keeps_erase_efv : forall x x' e n0,
-  x <> x' -> x `notin` ott.fv_eexpr (erase e) <->  x `notin` ott.fv_eexpr (erase (open_expr_wrt_expr_rec n0 `x' e)).
+Lemma open_expr_wrt_new_var_keeps_notin_erase : forall e x x' n0,
+  x <> x' -> x `notin` ott.fv_eexpr (erase e) <-> x `notin` ott.fv_eexpr (erase (open_expr_wrt_expr_rec n0 `x' e)).
 Proof.
   intros; split; intros. 
-  - induction e; auto.
-    + simpl; destruct (lt_eq_lt_dec n n0); simpl.
+  - generalize dependent n0. generalize dependent H0. pattern e.
+    eapply expr_ind_mut with 
+    (P0 := fun b => 
+      match b with 
+      | b_anno e A => forall n0, 
+          x `notin` ott.fv_eexpr (erase e) ->
+          x `notin` ott.fv_eexpr (erase (open_expr_wrt_expr_rec n0 `x' e))
+      end
+    ); intros; auto; try (simpl in *; auto; fail).
+    + simpl. destruct (lt_eq_lt_dec n n0); simpl.
       * destruct s; simpl; auto.
       * auto.
-    + simpl in *. admit.
-    + destruct b. simpl in *. admit.
-    + simpl in *. admit.
-    + destruct b; simpl in *. admit.
-    + simpl in *. auto. admit.
-  - induction e; auto.
-    + simpl in *. admit.
-    + destruct b. simpl in *. admit. 
-    + simpl in *. admit.
-    + destruct b. simpl in *. admit.
-    + simpl in *. auto. admit.
-Admitted.
+    + destruct b; simpl in *; auto. 
+    + destruct b; simpl in *; auto.
+  - generalize dependent n0. pattern e. 
+    eapply expr_ind_mut with 
+    (P0 := fun b => 
+      match b with 
+      | b_anno e A => forall n0, 
+          x `notin` ott.fv_eexpr (erase (open_expr_wrt_expr_rec n0 `x' e)) ->
+          x `notin` ott.fv_eexpr (erase e) 
+      end
+    ); intros; auto; try (simpl in *; eauto; fail).  
+    + destruct b; simpl in *. eauto. 
+    + destruct b; simpl in *. eauto.
+Qed.
 
-
-Lemma open_keeps_berase_befv : forall x x' e n0,
-  x <> x' -> x `notin` ott.fv_eexpr (berase e) <->  x `notin` ott.fv_eexpr (berase (open_bexpr_wrt_bexpr_rec n0 `'x' e)).
+Lemma open_bexpr_wrt_new_var_keeps_notin_berase : forall x x' e n0,
+  x <> x' -> x `notin` ott.fv_eexpr (berase e) <-> x `notin` ott.fv_eexpr (berase (open_bexpr_wrt_bexpr_rec n0 `'x' e)).
 Proof.
-Admitted.
+  intros; split; intros.
+  - generalize dependent n0. generalize dependent H0.
+    induction e; intros; auto; try (simpl in *; auto; fail).
+    + simpl. destruct (lt_eq_lt_dec n n0); simpl.
+      * destruct s; simpl; auto.
+      * auto.
+  - generalize dependent n0. 
+    induction e; intros; auto; try (simpl in *; eauto; fail).
+Qed.
 
-Ltac simpl_auto_impl := simpl in *; auto; fail.
+Ltac auto_open_expr_wrt_new_var_keeps_notin_erase := 
+  match goal with 
+  | H : ?x `notin` ott.fv_eexpr (erase ?e) |- ?x `notin` ott.fv_eexpr (berase ?e') =>  
+      match goal with 
+      | H1 : ?x `notin` ott.fv_eexpr (erase (?e ^^ `?x0)) -> ?x `notin` ott.fv_eexpr (berase (?e' ^^' `' ?x0)) |- _ => 
+        eapply open_expr_wrt_new_var_keeps_notin_erase with (x':=x0) (n0:=0) in H; eauto;
+        specialize (H1 H); eapply open_bexpr_wrt_new_var_keeps_notin_berase with (n0:=0); eauto                                     
+      end 
+  end.
+
 
 Lemma usub_elab_keeps_feexpr : forall Γ e1 e2 A Γ' e1' e2' A' x,
    usub_elab Γ e1 e2 A Γ' e1' e2' A' -> x `notin` ott.fv_eexpr (erase e1) ->  x `notin` ott.fv_eexpr (berase e1').
 Proof.
   intros.
-  induction H; try simpl_auto_impl.
-  - simpl in *. inst_cofinites_by (add x L). eapply open_keeps_erase_efv with (x':=x0) (n0:=0) in H0. 
-    specialize (H7 H0). eapply open_keeps_berase_befv with (n0:=0). admit. exact H7. admit.
-Admitted.
+  induction H; try (simpl in *; auto; fail); simpl in *; inst_cofinites_by (add x L).
+  - auto_open_expr_wrt_new_var_keeps_notin_erase. 
+  - apply notin_union; auto. apply notin_union_2 in H0. 
+    auto_open_expr_wrt_new_var_keeps_notin_erase. 
+  - auto_open_expr_wrt_new_var_keeps_notin_erase.
+  - apply notin_union; auto. apply notin_union_2 in H0.
+    auto_open_expr_wrt_new_var_keeps_notin_erase. 
+  - apply notin_union; auto. apply notin_union_2 in H0.
+    auto_open_expr_wrt_new_var_keeps_notin_erase.
+Qed.
+
 
 Lemma wf_context_elab_same_dom : forall Γ Γ',
     wf_context_elab Γ Γ' -> ctx_dom Γ = bctx_dom Γ'.
@@ -129,17 +162,16 @@ Proof.
   simpl. rewrite IHwf_context_elab; auto.
 Qed.
 
-Check busub_ind.
-
-
 Theorem bidir_complete4 : forall Γ e1 e2 A Γ' e1' e2' A'
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
   → Γ' ⊢ e1' <: e2' ⇒ A'.
 Proof with eauto with bidir.
   intros.
   pattern Γ, e1, e2, A, Γ', e1', e2', A', H.
-  apply usub_elab_mut with (
-    P0:= fun Γ Γ' (_ : wf_context_elab Γ Γ') => wf_bcontext Γ'); intros; try (constructor; auto; fail).
+  apply usub_elab_mut with 
+    (P0 := 
+      fun Γ Γ' (_ : wf_context_elab Γ Γ') => wf_bcontext Γ'); 
+    intros; try (constructor; auto; fail).
   - econstructor; auto; eauto...
   - econstructor; intros.
     + econstructor; eauto...
@@ -157,7 +189,7 @@ Proof with eauto with bidir.
   - econstructor; eauto... 
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
-    + constructor. admit.
+    + constructor; eapply busub_all_lc; eauto.
   - eapply bs_anno.
     + eapply bs_bind with (L:=L).
       * eauto...
@@ -165,8 +197,8 @@ Proof with eauto with bidir.
       * intros. eapply bs_sub.
         inst_cofinites_with x. eauto...
         eauto...
-      * intros. simpl. inst_cofinites_with x. admit. (* fv_eexpr *)
-      * intros. simpl. inst_cofinites_with x. admit. (* fv_eexpr *)
+      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_feexpr; eauto. 
+      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_feexpr; eauto.
     + eauto... 
     + eapply bs_forall with (L:=L); eauto...
       * intros. replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
@@ -237,6 +269,12 @@ Proof.
   - intuition.
 Admitted.
 
+Lemma inv_forall_new : forall Γ A B t,
+  Γ ⊢ e_all A B : ⋆ -> mono_type t -> Γ ⊢ t : A -> Γ ⊢ B ^^ t : ⋆.
+Proof.
+  intros.
+  dependent induction H.
+Admitted.
 
 Lemma inv_forall : forall Γ A B x,
   Γ ⊢ e_all A B : ⋆ ->  exists L, x `notin` L -> Γ, x : A ⊢ B ^^ `x :  ⋆.
@@ -247,18 +285,18 @@ Proof.
   - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
   - exists L. intros. eauto.
   - eapply star_sub_inversion_l in H0. 
-    specialize (IHusub1 A B (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). auto.
+    apply (IHusub1 A B (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). 
 Qed.
 
 Lemma wf_bcontext_elab_same_dom : forall Γ' Γ,
-    wf_bcontext_elab Γ' Γ -> bctx_dom Γ' =  ctx_dom Γ.
+  wf_bcontext_elab Γ' Γ -> bctx_dom Γ' = ctx_dom Γ.
 Proof.
   intros. induction H; auto.
   simpl. rewrite IHwf_bcontext_elab; auto.
 Qed.
 
 Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
-    busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
+  busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
 Proof.
   intros.
   pattern Γ', e1', e2', d, A', Γ, e1, e2, A, H.
@@ -273,8 +311,7 @@ Proof.
         | _ => False
         end  
       end
-    )
-    (P2 := fun Γ' A' B' (_ : greduce_elab Γ' A' B') => True);
+    );
     intros; try (constructor; auto; fail).
   - eauto.
   - eauto.
@@ -282,23 +319,19 @@ Proof.
   - dependent destruction i.
     + econstructor. admit. eauto. auto.
     + assert (Γ0 ⊢ e_all A0 B0 : ⧼ k_star ⧽) as Htc by admit. specialize (H3 Htc).
-      econstructor. admit. eauto. eapply ott.s_sub; eauto. 
+      econstructor. eapply busub_elab_keeps_mono; eauto. eauto. eapply ott.s_sub; eauto. 
   - econstructor; eauto.
     + intros. admit. (* fv_eexpr *)
     + intros. admit. (* fv_eexpr *)
   - econstructor; eauto.
     + admit. (* breduce *)
     + admit. (* breduce *)
-  - econstructor.
+  - eapply ott.s_castdn with (A:=A0).
     + eauto.
     + admit. (* P2 breduce *)
     + eauto.
-  - eapply ott.s_forall_l with (t:=t).
+  - eapply ott.s_forall_l with (t:=t); eauto.
     + eapply busub_elab_keeps_mono; eauto.
-    + eauto.
-    + eauto.
-    + auto.
-    + eauto.
   - econstructor; eauto.
   - eapply ott.s_forall; eauto.
   - auto.
@@ -307,12 +340,12 @@ Proof.
     + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
   - dependent destruction F. dependent destruction i.
     + intros. rewrite x.
-      eapply ott.s_forall_l with (t:=t).
+      eapply ott.s_forall_l with (t:=t) (L:=ctx_dom Γ0).
       * eapply busub_elab_keeps_mono; eauto.
       * admit.
       * eauto.
-      * admit.
-      * admit.
+      * eapply inv_forall_new; eauto. admit.
+      * intros. admit.
     + intros. rewrite <- x in H3.
       assert (Γ0 ⊢ B ^^ t: ⧼ k_star ⧽) by admit.
       rewrite <- x in H5. specialize (H3 H5). econstructor.

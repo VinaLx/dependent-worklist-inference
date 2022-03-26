@@ -307,3 +307,9 @@ Qed.
 Lemma star_sub_inversion_l : forall Γ A B,
     Γ ⊢ A <: ⋆ : B -> A = ⋆.
 Admitted.
+
+Corollary substitution_cons : forall Γ x A B e1 e2 e3,
+    Γ, x : B ⊢ e1 <: e2 : A ->
+    Γ ⊢ e3 : B -> mono_type e3 ->
+    Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
+Admitted.
