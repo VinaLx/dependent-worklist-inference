@@ -128,7 +128,7 @@ Proof.
     induction e; intros; auto; try (simpl in *; eauto; fail).
 Qed.
 
-Ltac auto_open_expr_wrt_new_var_keeps_notin_erase := 
+Ltac convert_to_open_expr_wrt_new_var := 
   match goal with 
   | H : ?x `notin` ott.fv_eexpr (erase ?e) |- ?x `notin` ott.fv_eexpr (berase ?e') =>  
       match goal with 
@@ -139,21 +139,141 @@ Ltac auto_open_expr_wrt_new_var_keeps_notin_erase :=
   end.
 
 
-Lemma usub_elab_keeps_feexpr : forall Γ e1 e2 A Γ' e1' e2' A' x,
+Lemma usub_elab_keeps_notin_fv_erase_l : forall Γ e1 e2 A Γ' e1' e2' A' x,
    usub_elab Γ e1 e2 A Γ' e1' e2' A' -> x `notin` ott.fv_eexpr (erase e1) ->  x `notin` ott.fv_eexpr (berase e1').
 Proof.
   intros.
   induction H; try (simpl in *; auto; fail); simpl in *; inst_cofinites_by (add x L).
-  - auto_open_expr_wrt_new_var_keeps_notin_erase. 
+  - convert_to_open_expr_wrt_new_var. 
   - apply notin_union; auto. apply notin_union_2 in H0. 
-    auto_open_expr_wrt_new_var_keeps_notin_erase. 
-  - auto_open_expr_wrt_new_var_keeps_notin_erase.
+    convert_to_open_expr_wrt_new_var. 
+  - convert_to_open_expr_wrt_new_var.
   - apply notin_union; auto. apply notin_union_2 in H0.
-    auto_open_expr_wrt_new_var_keeps_notin_erase. 
+    convert_to_open_expr_wrt_new_var. 
   - apply notin_union; auto. apply notin_union_2 in H0.
-    auto_open_expr_wrt_new_var_keeps_notin_erase.
+    convert_to_open_expr_wrt_new_var.
 Qed.
 
+Ltac convert_to_open_bexpr_wrt_new_var := 
+  match goal with 
+  | H : ?x `notin` ott.fv_eexpr (berase ?e') |- ?x `notin` ott.fv_eexpr (erase ?e) =>  
+      match goal with 
+      | H1 : ?x `notin` ott.fv_eexpr (berase (?e' ^^' `'?x0)) -> ?x `notin` ott.fv_eexpr (erase (?e ^^ ` ?x0)) |- _ => 
+        eapply open_bexpr_wrt_new_var_keeps_notin_berase with (x':=x0) (n0:=0) in H; eauto;
+        specialize (H1 H); eapply open_expr_wrt_new_var_keeps_notin_erase with (n0:=0); eauto                                     
+      end 
+  end.
+
+Ltac convert_to_open_bexpr_wrt_new_var_ x0 := 
+  repeat 
+  match goal with 
+  | e' : bexpr |- _ =>   
+    match goal with 
+    | H : ?x `notin` ott.fv_eexpr (berase e') |- _ =>  
+        eapply open_bexpr_wrt_new_var_keeps_notin_berase with (x':=x0) (n0:=0) in H; eauto
+    end                  
+  | e : expr |- _ =>
+    match goal with 
+    | _ : _ |- ?x `notin` ott.fv_eexpr (erase e) =>
+        eapply open_expr_wrt_new_var_keeps_notin_erase with (n0:=0); auto
+    end
+  end.
+
+
+Lemma notin_union_equiv_notin_conj : forall x s s',
+    x `notin` s `union` s' <-> x `notin` s /\ x `notin` s'.
+Proof.
+  intros; split; intros.
+  - split.
+    + apply notin_union_1 in H. auto.
+    + apply notin_union_2 in H. auto.
+  - destruct_conjs. apply notin_union; auto.
+Qed.
+
+Ltac destuct_notin :=
+  repeat
+    match goal with
+    | H : ?x `notin` ?s `union` ?s' |- _ => apply notin_union_equiv_notin_conj in H
+    end.
+
+
+Lemma busub_elab_keeps_notin_fv_erase_l : forall Γ' e1' e2' d' A' Γ e1 e2 A x,
+   busub_elab Γ' e1' e2' d' A' Γ e1 e2 A -> x `notin` ott.fv_eexpr (berase e1') ->  
+   x `notin` ott.fv_eexpr (erase e1).
+Proof.
+  intros.
+  induction H; try (simpl in *; auto; fail); simpl in *; inst_cofinites_by (add x L).
+  - convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin. apply notin_union; auto; convert_to_open_bexpr_wrt_new_var.
+  - convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin. apply notin_union; auto; convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin. apply notin_union; auto; convert_to_open_bexpr_wrt_new_var.
+Qed.
+
+Lemma busub_elab_keeps_notin_fv_erase_r : forall Γ' e1' e2' d' A' Γ e1 e2 A x,
+   busub_elab Γ' e1' e2' d' A' Γ e1 e2 A -> x `notin` ott.fv_eexpr (berase e2') ->  
+   x `notin` ott.fv_eexpr (erase e2).
+Proof.
+  intros.
+  induction H; try (simpl in *; auto; fail); simpl in *.
+  - inst_cofinites_by (add x L). convert_to_open_bexpr_wrt_new_var. 
+  - apply notin_union.
+    + admit.
+    + inst_cofinites_by (add x L). apply notin_union_2 in H0. convert_to_open_bexpr_wrt_new_var.
+  - inst_cofinites_by (add x L). convert_to_open_bexpr_wrt_new_var.
+  - apply notin_union.
+    + apply notin_union_1 in H0. auto.
+    + apply notin_union_2 in H0. inst_cofinites_by (add x L). convert_to_open_bexpr_wrt_new_var.
+  - apply notin_union.
+    + apply notin_union_1 in H0. auto.
+    + apply notin_union_2 in H0. inst_cofinites_by (add x L). convert_to_open_bexpr_wrt_new_var.
+Admitted.
+
+Lemma busub_elab_keeps_notin_fv_erase : forall Γ' e1' e2' d' A' Γ e1 e2 A x,
+   busub_elab Γ' e1' e2' d' A' Γ e1 e2 A -> 
+    (x `notin` ott.fv_eexpr (berase e1') /\ x `notin` ott.fv_eexpr (berase e2') ->  
+     x `notin` ott.fv_eexpr (erase e1)   /\ x `notin` ott.fv_eexpr (erase e2)).
+Proof.
+  intros.
+  induction H; try (simpl in *; split; destruct_conjs; auto; fail); simpl in *; inst_cofinites_by (add x L).
+  - split; destruct_conjs; convert_to_open_bexpr_wrt_new_var_ x0.
+  - destruct_conjs. destruct_notin. split;
+    apply notin_union; convert_to_open_bexpr_wrt_new_var_ x0.    
+  - split; destruct_conjs; convert_to_open_bexpr_wrt_new_var_ x0.
+  - destruct_conjs. destruct_notin; split.
+    + apply notin_union; convert_to_open_bexpr_wrt_new_var_ x0.
+    + admit.
+  - destruct_conjs. destruct_notin; split.
+    + convert_to_open_bexpr_wrt_new_var_ x0.
+    + apply notin_union.
+      * convert_to_open_bexpr_wrt_new_var_ x0.
+      * eapply open_expr_wrt_new_var_keeps_notin_erase with (n0:=0); auto. eapply H3; split; auto.
+        eapply open_bexpr_wrt_new_var_keeps_notin_berase in NotInTac1; auto.
+  - destruct_conjs. destruct_notin; split; apply notin_union; convert_to_open_bexpr_wrt_new_var_ x0.
+Admitted.
+
+Lemma busub_elab_keeps_notin_fv_erase' : forall Γ' e1' e2' d' A' Γ e1 e2 A x,
+   busub_elab Γ' e1' e2' d' A' Γ e1 e2 A -> 
+   (x `notin` ott.fv_eexpr (berase e1') -> x `notin` ott.fv_eexpr (erase e1)) /\
+   (x `notin` ott.fv_eexpr (berase e2') -> x `notin` ott.fv_eexpr (erase e2)).
+Proof.
+  intros.
+  induction H; try (simpl in *; split; destruct_conjs; auto); inst_cofinites_by (add x L); intros; destruct_conjs;
+    try convert_to_open_bexpr_wrt_new_var.
+  - apply notin_union; auto; destruct_notin; convert_to_open_bexpr_wrt_new_var.
+  - apply notin_union.
+    + destruct_notin. auto.
+    + destruct_notin. convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin; apply notin_union; auto.
+    convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin; apply notin_union; auto.
+    convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin; apply notin_union; auto.
+    convert_to_open_bexpr_wrt_new_var.
+  - destruct_notin; apply notin_union; auto.
+    convert_to_open_bexpr_wrt_new_var.
+Qed.
+    
 
 Lemma wf_context_elab_same_dom : forall Γ Γ',
     wf_context_elab Γ Γ' -> ctx_dom Γ = bctx_dom Γ'.
@@ -197,8 +317,8 @@ Proof with eauto with bidir.
       * intros. eapply bs_sub.
         inst_cofinites_with x. eauto...
         eauto...
-      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_feexpr; eauto. 
-      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_feexpr; eauto.
+      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_notin_fv_erase_l; eauto. 
+      * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_notin_fv_erase_l; eauto.
     + eauto... 
     + eapply bs_forall with (L:=L); eauto...
       * intros. replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
@@ -321,8 +441,8 @@ Proof.
     + assert (Γ0 ⊢ e_all A0 B0 : ⧼ k_star ⧽) as Htc by admit. specialize (H3 Htc).
       econstructor. eapply busub_elab_keeps_mono; eauto. eauto. eapply ott.s_sub; eauto. 
   - econstructor; eauto.
-    + intros. admit. (* fv_eexpr *)
-    + intros. admit. (* fv_eexpr *)
+    + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase' with (e1:=e0 ^^ `x) (e2:= e3 ^^ `x); eauto.
+    + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase'; eauto.
   - econstructor; eauto.
     + admit. (* breduce *)
     + admit. (* breduce *)
