@@ -134,20 +134,55 @@ Proof.
     + apply inb_there. auto. apply IHΓ3. auto.
 Qed.
 
+
+Ltac weakening_auto := 
+  match goal with 
+  | x : atom |- _ =>
+    match goal with 
+    | H : x `notin` union ?L ?dom |- _ => 
+      repeat
+      match goal with 
+      | H1 : forall x, x `notin` ?L -> 
+             forall Γ4 Γ5, bctx_cons (?Γ1 ,,' ?Γ3) x ?A = Γ4 ,,' Γ5 -> _ |- _ => 
+        match goal with 
+        | H2 : ⫦ ?Γ1,,' ?Γ2,,' ?Γ3 |- _ => 
+        assert (⫦ Γ1,,' Γ2,,' Γ3,' x:A) as Hwfx by eauto;
+        apply notin_union_1 in H as HnotinL; 
+        specialize (H1 x HnotinL Γ1 (Γ3,'x:A) (eq_refl (Γ1,,' Γ3,' x : A))); auto;
+        clear HnotinL; clear Hwfx
+        end
+      end
+    end
+  end.
+
+
 Theorem bidir_weakening : forall Γ1 Γ2 Γ3 e1 e2 d A,
   busub (Γ1,,'       Γ3) e1 e2 d A -> ⫦ Γ1 ,,' Γ2 ,,' Γ3 ->
   busub (Γ1,,' Γ2,,' Γ3) e1 e2 d A.
 Proof.
   intros until A. intro Hsub.
   dependent induction Hsub; intro Hwf; auto.
-  - constructor. auto. eapply in_bctx_weakening; auto. admit.
+  - constructor. auto. eapply in_bctx_weakening; auto. 
+    eapply lc_bmiddle. apply bwf_lc. eauto.
   - econstructor. eapply IHHsub; auto.
-  - econstructor. eapply IHHsub; auto. auto.
-    intros. specialize (H2 x H3). admit. admit.
-  - econstructor. eapply IHHsub1; auto. eapply IHHsub2; auto. auto. admit. admit.
-  - econstructor. auto. admit. admit. admit. (* *** *)
-  - econstructor.
+  - eapply bs_abs with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto. 
+  - eapply bs_pi with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto. 
+    + intros; weakening_auto.
+    + intros. specialize (IHHsub2 Γ1 Γ3 (eq_refl (Γ1,,'Γ3)) Hwf). apply bidir_refl_l in IHHsub2.
+      weakening_auto.
+  - econstructor; eauto. admit. (* requires mut_ind *)
+  - eapply bs_bind with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto.
+  - econstructor; eauto.
+  - econstructor. eauto. admit. (* requires mut_ind *) eauto.
+  - eapply bs_forall_l with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto.
+  - eapply bs_forall_r with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto.
+  - eapply bs_forall with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto.
+    + intros. specialize (IHHsub1 Γ1 Γ3 (eq_refl (Γ1,,'Γ3)) Hwf). 
+      apply bidir_refl_l in IHHsub1. weakening_auto.
+  - econstructor; eauto.
+  - econstructor; eauto.
 Admitted.
+
 
 (* Theorem bidir_elab_weakening : forall Γ1' Γ2' Γ3' e1' e2' d k Γ1 Γ2 Γ3 e1 e2,
   busub_elab (Γ1',,'         Γ3') e1' e2' d ⧼k⧽' (Γ1,,      Γ3) e1 e2 ⧼(to_k k)⧽ ->
@@ -162,6 +197,7 @@ Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
   forall A k, Γ1 ⊢ A <: B ⇒ ⧼ k ⧽' -> 
   busub (Γ1,' x : A,,' Γ2) e1 e2 d C.
 Proof.
+    
 Admitted.
 
 

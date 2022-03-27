@@ -154,7 +154,7 @@ Proof.
     convert_to_open_expr_wrt_new_var.
 Qed.
 
-Ltac convert_to_open_bexpr_wrt_new_var := 
+Ltac convert_match_to_open_bexpr_wrt_new_var := 
   match goal with 
   | H : ?x `notin` ott.fv_eexpr (berase ?e') |- ?x `notin` ott.fv_eexpr (erase ?e) =>  
       match goal with 
@@ -164,18 +164,18 @@ Ltac convert_to_open_bexpr_wrt_new_var :=
       end 
   end.
 
-Ltac convert_to_open_bexpr_wrt_new_var_ x0 := 
+Ltac convert_all_to_open_bexpr_wrt_new_var x0 := 
   repeat 
   match goal with 
   | e' : bexpr |- _ =>   
     match goal with 
     | H : ?x `notin` ott.fv_eexpr (berase e') |- _ =>  
-        eapply open_bexpr_wrt_new_var_keeps_notin_berase with (x':=x0) (n0:=0) in H; eauto
+        eapply open_bexpr_wrt_new_var_keeps_notin_berase with (x':=x0) (n0:=0) in H
     end                  
   | e : expr |- _ =>
     match goal with 
     | _ : _ |- ?x `notin` ott.fv_eexpr (erase e) =>
-        eapply open_expr_wrt_new_var_keeps_notin_erase with (n0:=0); auto
+        eapply open_expr_wrt_new_var_keeps_notin_erase with (n0:=0)
     end
   end.
 
@@ -190,10 +190,10 @@ Proof.
   - destruct_conjs. apply notin_union; auto.
 Qed.
 
-Ltac destuct_notin :=
+Ltac destruct_notin_union :=
   repeat
     match goal with
-    | H : ?x `notin` ?s `union` ?s' |- _ => apply notin_union_equiv_notin_conj in H
+    | H : ?x `notin` ?s `union` ?s' |- _ => apply notin_union_equiv_notin_conj in H; destruct_conjs
     end.
 
 
@@ -204,19 +204,8 @@ Lemma busub_elab_keeps_notin_fv_erase : forall Γ' e1' e2' d' A' Γ e1 e2 A x,
 Proof.
   intros.
   induction H; try (simpl in *; split; destruct_conjs; auto); inst_cofinites_by (add x L); intros; destruct_conjs;
-    try convert_to_open_bexpr_wrt_new_var.
-  - apply notin_union; auto; destruct_notin; convert_to_open_bexpr_wrt_new_var.
-  - apply notin_union.
-    + destruct_notin. auto.
-    + destruct_notin. convert_to_open_bexpr_wrt_new_var.
-  - destruct_notin; apply notin_union; auto.
-    convert_to_open_bexpr_wrt_new_var.
-  - destruct_notin; apply notin_union; auto.
-    convert_to_open_bexpr_wrt_new_var.
-  - destruct_notin; apply notin_union; auto.
-    convert_to_open_bexpr_wrt_new_var.
-  - destruct_notin; apply notin_union; auto.
-    convert_to_open_bexpr_wrt_new_var.
+    try (convert_match_to_open_bexpr_wrt_new_var; eauto);
+    try (destruct_notin_union; apply notin_union; auto; convert_match_to_open_bexpr_wrt_new_var; eauto).
 Qed.
     
 
@@ -335,14 +324,14 @@ Proof.
 Admitted.
 
 Lemma inv_forall_new : forall Γ A B t,
-  Γ ⊢ e_all A B : ⋆ -> mono_type t -> Γ ⊢ t : A -> Γ ⊢ B ^^ t : ⋆.
+  Γ ⊢ e_all A B : ⋆ -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⋆.
 Proof.
   intros.
   dependent induction H.
 Admitted.
 
 Lemma inv_forall : forall Γ A B x,
-  Γ ⊢ e_all A B : ⋆ ->  exists L, x `notin` L -> Γ, x : A ⊢ B ^^ `x :  ⋆.
+  Γ ⊢ e_all A B : ⋆ -> exists L, x `notin` L -> Γ, x : A ⊢ B ^^ `x : ⋆ .
 Proof.
   intros.
   dependent induction H.
@@ -376,15 +365,21 @@ Proof.
         | _ => False
         end  
       end
+    )
+    (P2 := fun Γ' A' B' (_ : greduce_elab Γ' A' B') =>
+      breduce A' B'                                
     );
     intros; try (constructor; auto; fail).
   - eauto.
   - eauto.
   - eauto.
   - dependent destruction i.
-    + econstructor. admit. eauto. auto.
-    + assert (Γ0 ⊢ e_all A0 B0 : ⧼ k_star ⧽) as Htc by admit. specialize (H3 Htc).
-      econstructor. eapply busub_elab_keeps_mono; eauto. eauto. eapply ott.s_sub; eauto. 
+    + econstructor.
+      eapply busub_elab_keeps_mono; eauto. eauto. auto.
+    + specialize (type_correctness Γ0 e0 e3 (e_all A0 B0) H0). intros.
+      inversion H5. inversion H6. destruct H6 as [k]. destruct k.
+      * specialize (H3 H6). econstructor. eapply busub_elab_keeps_mono; eauto. eauto. eapply ott.s_sub; eauto.
+      * dependent destruction H6. apply refl_r in H6_0. eapply box_never_welltype in H6_0. contradiction.
   - econstructor; eauto.
     + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase with (e1:=e0 ^^ `x) (e2:=e3 ^^ `x); eauto.
     + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase; eauto.
@@ -393,7 +388,7 @@ Proof.
     + admit. (* breduce *)
   - eapply ott.s_castdn with (A:=A0).
     + eauto.
-    + admit. (* P2 breduce *)
+    + admit. (* breduce *)
     + eauto.
   - eapply ott.s_forall_l with (t:=t); eauto.
     + eapply busub_elab_keeps_mono; eauto.
@@ -409,16 +404,18 @@ Proof.
       * eapply busub_elab_keeps_mono; eauto.
       * admit.
       * eauto.
-      * eapply inv_forall_new; eauto. admit.
+      * eapply inv_forall_new; eauto. eapply busub_elab_keeps_mono; eauto.
       * intros. admit.
     + intros. rewrite <- x in H3.
       assert (Γ0 ⊢ B ^^ t: ⧼ k_star ⧽) by admit.
-      rewrite <- x in H5. specialize (H3 H5). econstructor.
-      * admit.
+      rewrite <- x in H5. specialize (H3 H5). eapply ott.s_forall_l with (L:=ctx_dom Γ0).
+      * eapply busub_elab_keeps_mono with (e1':=t'); eauto.
       * admit.
       * eauto.
       * rewrite <- x. auto.
       * admit.
+  - auto.
+  - admit.
 Admitted.
 
 

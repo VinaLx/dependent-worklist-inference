@@ -308,8 +308,20 @@ Lemma star_sub_inversion_l : forall Γ A B,
     Γ ⊢ A <: ⋆ : B -> A = ⋆.
 Admitted.
 
+Theorem type_correctness : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
+Admitted.
+
+Lemma box_never_welltype : forall Γ A,
+    ~ (Γ ⊢ ◻ : A).
+Proof.
+  intros. intro.
+  dependent induction H; auto.
+Qed.
+
 Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ, x : B ⊢ e1 <: e2 : A ->
     Γ ⊢ e3 : B -> mono_type e3 ->
     Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
 Admitted.
+
