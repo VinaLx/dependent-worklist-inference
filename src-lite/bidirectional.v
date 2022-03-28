@@ -408,12 +408,14 @@ Proof.
       * intros. admit.
     + intros. rewrite <- x in H3.
       assert (Γ0 ⊢ B ^^ t: ⧼ k_star ⧽) by admit.
-      rewrite <- x in H5. specialize (H3 H5). eapply ott.s_forall_l with (L:=ctx_dom Γ0).
-      * eapply busub_elab_keeps_mono with (e1':=t'); eauto.
-      * admit.
-      * eauto.
-      * rewrite <- x. auto.
-      * admit.
+      eapply type_correctness in H0 as Htca. destruct Htca.
+      * subst. eapply not_eall_box in H4. contradiction.
+      * destruct H6 as [k]. rewrite <- x in H5. specialize (H3 H5). eapply ott.s_forall_l with (L:=ctx_dom Γ0) .
+        -- eapply busub_elab_keeps_mono with (e1':=t'); eauto. 
+        -- eauto.
+        -- auto.
+        -- rewrite <- x. auto.
+        -- admit.
   - auto.
   - admit.
 Admitted.

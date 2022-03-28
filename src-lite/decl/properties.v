@@ -319,6 +319,19 @@ Proof.
   dependent induction H; auto.
 Qed.
 
+Lemma not_eall_box : forall Γ B,
+    ~ (Γ ⊢ e_all ◻ B : ⋆).
+Proof.
+  intros. intro.
+  dependent induction H; auto.
+  + apply box_never_welltype in H0. contradiction.
+  + apply box_never_welltype in H. contradiction.
+  + apply box_never_welltype in H. contradiction.
+  + apply star_sub_inversion_l in H0.
+    eauto.
+Qed.
+
+
 Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ, x : B ⊢ e1 <: e2 : A ->
     Γ ⊢ e3 : B -> mono_type e3 ->
