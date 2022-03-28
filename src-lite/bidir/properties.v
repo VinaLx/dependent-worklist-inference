@@ -208,9 +208,6 @@ Proof.
     + dependent destruction b.
   - eapply gr_all with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)) (t:=t); eauto.
     intros. weakening_auto.
-    assert (⫦ Γ1,,' Γ2,,' Γ3,' x : A0).
-    + econstructor; eauto. admit.
-    + weakening_auto.
 
   (** infer_app **)
   - econstructor; eauto. apply bwf_lc. eauto.

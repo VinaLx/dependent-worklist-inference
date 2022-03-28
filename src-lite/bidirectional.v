@@ -384,11 +384,11 @@ Proof.
     + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase with (e1:=e0 ^^ `x) (e2:=e3 ^^ `x); eauto.
     + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase; eauto.
   - econstructor; eauto.
-    + admit. (* breduce *)
-    + admit. (* breduce *)
+    + admit. (* reduce *)
+    + admit. (* reduce *)
   - eapply ott.s_castdn with (A:=A0).
     + eauto.
-    + admit. (* breduce *)
+    + admit. (* reduce *)
     + eauto.
   - eapply ott.s_forall_l with (t:=t); eauto.
     + eapply busub_elab_keeps_mono; eauto.
