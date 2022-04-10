@@ -66,6 +66,8 @@ formula :: formula_ ::=
   | x # e *    :: M :: erased_fresh
     {{ coq ([[x]] `notin` fv_eexpr (berase [[e]])) }}
   | A = B :: M :: equality {{ coq [[A]] = [[B]] }}
+  | A --*> B  :: M :: erased_reduce
+    {{ coq ereduce (berase [[A]]) (berase [[B]]) }}
 
 substitutions
   single e x :: subst
@@ -158,7 +160,6 @@ mono e
 mono castdn e
 
 mono e
-mono A
 ---------------------- :: anno
 mono e : A
 
@@ -248,14 +249,12 @@ defn
 G |- e1 -->> e2 :: :: greduce :: 'gr_'
 by
 
-e1 --> e2
+e1 --*> e2
 ---------------- :: reduce
 G |- e1 -->> e2
 
 mono t
-G |- A => *
 G |- t <= A
-G , x : A |- B => *
 G |- [t / x] B -->> C
 ---------------------------- :: all
 G |- forall x : A. B -->> C
@@ -321,16 +320,16 @@ G |- bind x . e1 <: bind x . e2 <= forall x : A. B
 % G |- mu x : t. s <: mu x : t. s : t
 
 G |- A => k
-A --> B
+A --*> B
 G |- e1 <: e2 <= B
--------------------------------------------- :: castup
+--------------------------------------- :: castup
 G |- castup e1 <: castup e2 <= A
 
 G |- B => k
 G |- A -->> B
 G |- e1 <: e2 => A
 --------------------------------------- :: castdn
-G |- castdn e1 <: castdn e2 => B
+G |- castdn e1 <: castdn e2 <= B
 
 mono t
 G |- A => k
