@@ -1,4 +1,4 @@
-Require Import decl.properties.
+(* Require Import decl.properties.
 Require Import decl.ln_inf.
 Require Import Program.Tactics.
 Require Import bidir.notations.
@@ -253,4 +253,4 @@ Proof. (* *** *)
   - constructor. fold to_bexpr. auto.
   - simpl. constructor. admit. 
   - constructor; fold to_bexpr; apply to_bexpr_keeps_lc; auto.
-Admitted.
+Admitted. *)

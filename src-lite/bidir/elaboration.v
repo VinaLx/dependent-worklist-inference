@@ -24,10 +24,10 @@ Inductive wf_bcontext_elab : bcontext → context → Prop :=
 with infer_app_elab
   : bcontext -> bexpr → app_fun
   ->  context ->  expr -> decl_app_fun → Prop :=
-| iappe_pi : forall L Γ' Γ A' A B' B k
+| iappe_pi : forall Γ' Γ A' A B' B 
   , infer_app_elab Γ' (be_pi A' B') (fun_pi A' B')
                    Γ  (e_pi A B)   (dfun_pi A B)
-| iappe_all : forall L Γ' Γ A' A B' B t' t F' F
+| iappe_all : forall Γ' Γ A' A B' B t' t F' F
   , mono_btype t'
   -> busub_elab Γ' t' t' d_check A' Γ t t A
   -> infer_app_elab Γ' (B' ^^' t')    F' Γ (B ^^ t)    F

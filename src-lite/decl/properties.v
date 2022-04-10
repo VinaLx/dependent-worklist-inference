@@ -1,4 +1,5 @@
 Require Export decl.notations.
+Require Import ln_utils.
 Require Import Program.Tactics.
 Require Export Coq.Program.Equality.
 
@@ -34,7 +35,11 @@ Scheme wf_mut   := Induction for wf_context  Sort Prop
 Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
 Proof.
-  intros. induction H; auto.
+  intros. induction H; auto. 
+  - inst_cofinites_with_new; eapply lc_e_abs_exists with (x1:=x); auto.
+    constructor; auto.
+  - inst_cofinites_with_new; eapply lc_e_bind_exists with (x1:=x); auto.
+    constructor; auto.
 Qed.
 
   
@@ -298,4 +303,38 @@ Proof.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
 Qed.
 
+
+Lemma star_sub_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> A = ⋆.
+Admitted.
+
+Theorem type_correctness : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
+Admitted.
+
+Lemma box_never_welltype : forall Γ A,
+    ~ (Γ ⊢ ◻ : A).
+Proof.
+  intros. intro.
+  dependent induction H; auto.
+Qed.
+
+Lemma not_eall_box : forall Γ B,
+    ~ (Γ ⊢ e_all ◻ B : ⋆).
+Proof.
+  intros. intro.
+  dependent induction H; auto.
+  + apply box_never_welltype in H0. contradiction.
+  + apply box_never_welltype in H. contradiction.
+  + apply box_never_welltype in H. contradiction.
+  + apply star_sub_inversion_l in H0.
+    eauto.
+Qed.
+
+
+Corollary substitution_cons : forall Γ x A B e1 e2 e3,
+    Γ, x : B ⊢ e1 <: e2 : A ->
+    Γ ⊢ e3 : B -> mono_type e3 ->
+    Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
+Admitted.
 
