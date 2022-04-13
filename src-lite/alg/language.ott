@@ -37,12 +37,19 @@ binding, b :: 'b_' ::=
   | ^ ex : A :: :: ex
   | < kx >   :: :: kind
 
+cont, c :: 'c_' ::=
+  | Done       :: :: done
+  | _ . e => c :: :: iapp
+  | _ --> c    :: :: reduce
+  | _ <: A , c :: :: inst
+  | _ <~: A    :: :: check
+
 work, w :: 'w_' ::=
   | ob |= e1 <: e2 <= A :: :: check
-  | e1 <: e2    => x . wl  :: :: infer     (+ bind x in wl +)
-  | A . e1 & e2 => x . wl  :: :: infer_app (+ bind x in wl +)
-  | e    --> x . wl :: :: reduce    (+ bind x in wl +)
-  | A <~: B         :: :: compact
+  | e1 <: e2 => c       :: :: infer
+  | A =>> c :: :: infer_app
+  | e --> c :: :: reduce
+  | A <~: B :: :: compact
 
 worklist, wl :: 'wl_' ::=
   | nil     :: :: nil

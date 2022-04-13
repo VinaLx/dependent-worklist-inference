@@ -1,4 +1,0 @@
-- match multiple goals
-- gr_all
-- _elab type correctness
-- weaker lemmas cannot be proven

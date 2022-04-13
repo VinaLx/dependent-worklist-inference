@@ -24,7 +24,7 @@ Inductive wf_bcontext_elab : bcontext → context → Prop :=
 with infer_app_elab
   : bcontext -> bexpr → app_fun
   ->  context ->  expr -> decl_app_fun → Prop :=
-| iappe_pi : forall Γ' Γ A' A B' B 
+| iappe_pi : forall Γ' Γ A' A B' B
   , infer_app_elab Γ' (be_pi A' B') (fun_pi A' B')
                    Γ  (e_pi A B)   (dfun_pi A B)
 | iappe_all : forall Γ' Γ A' A B' B t' t F' F
@@ -35,14 +35,11 @@ with infer_app_elab
 with greduce_elab : bcontext -> bexpr -> bexpr → Prop :=
 | gre_reduce : forall Γ' e1 e2
   , lc_bcontext Γ'
-  -> breduce e1 e2
+  -> ereduce (berase e1) (berase e2)
   -> greduce_elab Γ' e1 e2
-| gre_all : forall L Γ' Γ A' A B' B C' t
+| gre_all : forall Γ' A' B' C' t
   , mono_btype t
   -> busub Γ' t t d_check A'
-  -> (forall x , x \notin  L
-    -> busub_elab (Γ' ,' x : A') (B' ^`' x) (B' ^`' x) d_infer ⋆'
-                 (Γ  ,  x : A ) (B  ^`  x) (B  ^`  x) ⋆)
   -> greduce_elab Γ' (B' ^^' t) C'
   -> greduce_elab Γ' (be_all A' B') C'
 with busub_elab
@@ -105,7 +102,7 @@ with busub_elab
                Γ (Λ A, e1 : B) (Λ A, e2 : B) (e_all A B)
 | bse_castup : forall Γ' Γ e1' e1 e2' e2 A' A k B' B
   , busub_elab Γ' A' A' d_infer ⧼k⧽' Γ A A ⧼(to_k k)⧽
-  -> breduce A' B'
+  -> ereduce (berase A') (berase B')
   -> busub_elab Γ' e1' e2' d_check B' Γ e1 e2 B
   -> busub_elab Γ' (be_castup e1') (be_castup e2') d_check A'
                Γ  (e_castup A e1) (e_castup A e2) A
@@ -199,6 +196,12 @@ with usub_elab
     → usub_elab (Γ , x : A1 ) (B2  ^`  x) (B1  ^`  x) ⧼k2⧽
                 (Γ','x : A1') (B2' ^`' x) (B1' ^`' x) ⧼(to_bk k2)⧽')
   → (forall x , x \notin L
+    → usub_elab (Γ , x : A2 ) (B1  ^`  x) (B2  ^`  x) ⧼k2⧽
+                (Γ','x : A2') (B1' ^`' x) (B2' ^`' x) ⧼(to_bk k2)⧽')
+  → (forall x , x \notin L
+    → usub_elab (Γ , x : A2 ) (B2  ^`  x) (B1  ^`  x) ⧼k2⧽
+                (Γ','x : A2') (B2' ^`' x) (B1' ^`' x) ⧼(to_bk k2)⧽')
+  → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))
   → usub_elab Γ (λ_ A1, e1 : B1) (λ_ A2, e2 : B2) (e_pi A1 B1)
@@ -231,6 +234,12 @@ with usub_elab
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (B2  ^`  x) (B1  ^`  x) ⋆
                 (Γ','x : A1') (B2' ^`' x) (B1' ^`' x) ⋆')
+  → (forall x , x \notin L
+    → usub_elab (Γ , x : A2 ) (B1  ^`  x) (B2  ^`  x) ⋆
+                (Γ','x : A2') (B1' ^`' x) (B2' ^`' x) ⋆')
+  → (forall x , x \notin L
+    → usub_elab (Γ , x : A2 ) (B2  ^`  x) (B1  ^`  x) ⋆
+                (Γ','x : A2') (B2' ^`' x) (B1' ^`' x) ⋆')
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))

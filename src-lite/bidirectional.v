@@ -5,7 +5,6 @@ Require Import decl.properties.
 Require Import bidir.notations.
 Require Import bidir.properties.
 Require Import bidir.elaboration.
-Require Import transform_properties.
 Require Import ln_utils.
 
 
