@@ -266,6 +266,17 @@ Proof.
   intros.
 Admitted. *)
 
+Lemma bctx_dom_narrowing_eq : forall Γ1 Γ2 x A B,
+  bctx_dom (Γ1,' x : A,,' Γ2) = bctx_dom (Γ1,' x : B,,' Γ2).
+intros.
+  induction Γ2.
+  - auto.
+  - simpl. rewrite IHΓ2. auto.
+Qed.
+
+Hint Rewrite bctx_dom_narrowing_eq : bctx.
+
+
 Lemma bidir_narrowing_lc_helper : forall Γ1 Γ2 x A B k,
   lc_bcontext (Γ1,' x : B,,' Γ2) ->
   Γ1 ⊢ A <: B ⇒ ⧼ k ⧽' ->
@@ -283,7 +294,7 @@ Scheme  busub_narrowing_mut       := Induction for busub       Sort Prop
   with  greduce_narrowing_mut     := Induction for greduce     Sort Prop
   with  infer_app_narrowing_mut   := Induction for infer_app   Sort Prop.
 
-Theorem bidir_narrowing' : forall Γ1 x B Γ2 e1 e2 d C,
+Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
   busub (Γ1,' x : B,,' Γ2) e1 e2 d C -> 
   forall A k, Γ1 ⊢ A <: B ⇒ ⧼ k ⧽' -> 
   busub (Γ1,' x : A,,' Γ2) e1 e2 d C.
@@ -291,8 +302,7 @@ Proof with autorewrite with bctx; eauto.
   intros. remember (Γ1,' x : B,,' Γ2) as Γ.
   generalize dependent HeqΓ. generalize dependent Γ2. 
   pattern Γ, e1, e2, d, C, H.
-  Check busub_narrowing_mut.
-  
+    
   eapply busub_narrowing_mut with 
   (P := fun Γ e1 e2 d C (_ : busub Γ e1 e2 d C) =>
     forall Γ2, 
@@ -315,7 +325,9 @@ Proof with autorewrite with bctx; eauto.
       infer_app (Γ1,' x : A,,' Γ2) C F
   )
   ; intros; auto; subst.
-  - constructor; auto. admit.
+  - destruct (x==x0).
+    + subst. assert (A0=B) by admit. subst. econstructor. admit. admit.
+    + econstructor. admit. admit.
   - eauto.
   - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x0; eauto... 
   - eapply bs_pi with (L:=L); eauto; intros; inst_cofinites_with x0; eauto...
@@ -337,7 +349,8 @@ Proof with autorewrite with bctx; eauto.
     + dependent destruction H3. simpl. econstructor; auto.
       eapply bidir_refl_l in H0. eauto.
     + dependent destruction H3. simpl. econstructor; eauto.
-    admit.
+      replace (bctx_dom (Γ1,' x : A,,' Γ2)) with (bctx_dom (Γ1,' x : B,,' Γ2)); auto.
+      eapply bctx_dom_narrowing_eq.
 
   (* P1 *)
   - dependent destruction b; econstructor; eauto; eapply bidir_narrowing_lc_helper; eauto.
