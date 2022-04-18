@@ -263,7 +263,7 @@ with usub_elab
   -> A ⟶ B
   -> usub_elab Γ e1 e2 A Γ' e1' e2' A'
   -> usub_elab Γ  (e_castdn  e1 ) (e_castdn  e2 ) B
-              Γ' (be_castdn e1') (be_castdn e2') B'
+              Γ' (be_castdn e1' ::' B') (be_castdn e2' ::' B') B'
 | s_forall_l : forall L Γ Γ' A B C t A' B' C' t' k
   , mono_type t
   -> usub_elab Γ A A ⧼k⧽ Γ' A' A' ⧼(to_bk k)⧽'
