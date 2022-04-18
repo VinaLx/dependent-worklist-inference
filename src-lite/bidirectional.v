@@ -53,6 +53,14 @@ Ltac destruct_mono :=
     | H : mono_type (?P ?x) |- _ => dependent destruction H
     end.
 
+Ltac solve_lc_bexpr :=
+  match goal with 
+  | _ : _ |- lc_bexpr (be_abs ?e) => inst_cofinites_with_new; eapply lc_be_abs_exists; intuition; eauto
+  | _ : _ |- lc_bexpr (be_pi ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_pi_exists; intuition; eauto
+  | _ : _ |- lc_bexpr (be_all ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_all_exists; intuition; eauto
+  | _ : _ |- lc_bexpr (be_bind ?e1) =>  inst_cofinites_with_new; eapply lc_be_bind_exists; intuition; eauto
+  end.
+  
 Ltac solve_trivial_mono := 
   destruct_mono; econstructor; intuition; eauto; fail.
 
@@ -61,23 +69,31 @@ Ltac usub_elab_keeps_mono_impl H L L0 L1 :=
 
 Lemma usub_elab_keeps_mono : forall Γ e1 e2 A Γ' e1' e2' A',
    usub_elab Γ e1 e2 A Γ' e1' e2' A' ->
-       (mono_type e1 /\ mono_type e2 -> mono_btype e1' /\ mono_btype e2').
+       (mono_type e1 /\ mono_type e2 -> mono_btype e1' /\ mono_btype e2') /\ lc_bexpr e1' /\ lc_bexpr e2'.
 Proof.
  intros.
  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_mono.
- - destruct_mono. econstructor.
-   + destruct_mono. usub_elab_keeps_mono_impl bmono_lambda L L0 L1.
-   + destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - destruct_mono. econstructor.
-    + usub_elab_keeps_mono_impl bmono_lambda L L0 L1.
-    + usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - destruct_mono. usub_elab_keeps_mono_impl bmono_pi L L0 L1.
-  - destruct_mono. admit.  (* *** *)
-  - admit.  (* *** *)
-  - constructor; intuition. admit.  (* *** *)
-  - constructor; intuition. admit.  (* *** *)
-Admitted.
+ - destruct_mono. econstructor. inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); intuition. 
+  + eapply bmono_lambda with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition. 
+ - destruct_mono. econstructor. inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); intuition. 
+  + eapply bmono_lambda with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition. 
+ - econstructor; solve_lc_bexpr.
+ - econstructor; solve_lc_bexpr.
+ - destruct_mono. eapply bmono_pi with (L:=L `union` (L0 `union` L1)). intuition. intros. inst_cofinites_with x. intuition.
+ - destruct_mono. eapply bmono_pi with (L:=L `union` (L0 `union` L1)). intuition. intros. inst_cofinites_with x. intuition.
+ - solve_lc_bexpr.
+ - solve_lc_bexpr.
+ - destruct_mono. econstructor. solve_lc_bexpr.
+   eapply bmono_bind with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition.
+ - destruct_mono. econstructor. solve_lc_bexpr.
+   eapply bmono_bind with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition.
+ - econstructor; solve_lc_bexpr.
+ - econstructor; solve_lc_bexpr.
+ - solve_lc_bexpr.
+ - solve_lc_bexpr.
+ - solve_lc_bexpr.
+ - solve_lc_bexpr.
+Qed.
 
 Scheme expr_ind_mut 
     := Induction for expr Sort Prop
@@ -124,7 +140,7 @@ Proof.
       * destruct s; simpl; auto.
       * auto.
   - generalize dependent n0. 
-    induction e; intros; auto; try (simpl in *; eauto; fail).
+    induction e; intros; auto; try (simpl in *; eauto).
 Qed.
 
 Ltac convert_to_open_expr_wrt_new_var := 
@@ -230,13 +246,7 @@ Proof with eauto with bidir.
     + econstructor; eauto...
       * intros. inst_cofinites_with x. eapply bs_sub with (A:=B1' ^`' x)...
     + eapply bs_pi with (L:=L); eauto...
-      * intros. inst_cofinites_with x.
-        replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
-        eapply bidir_narrowing with (B:=A1'); simpl; eauto.
     + eapply bs_pi with (L:=L); eauto...
-      * intros. inst_cofinites_with x...
-        replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
-        eapply bidir_narrowing with (B:=A1'); simpl; eauto...
   - econstructor; eauto... 
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
@@ -252,14 +262,13 @@ Proof with eauto with bidir.
       * intros. simpl. inst_cofinites_with x. eapply usub_elab_keeps_notin_fv_erase_l; eauto.
     + eauto... 
     + eapply bs_forall with (L:=L); eauto...
-      * intros. replace (Γ'0,' x : A2') with (Γ'0,' x : A2',,'bctx_nil) by auto.
-        eapply bidir_narrowing with (B:=A1'); eauto.
   - econstructor; eauto.
     eapply bs_castup with (B:=B'); eauto.
     + eapply bidir_refl_l in H0. exact H0.
     + admit. (* breduce *)
     + eapply bs_sub with (A:=B'). auto. admit. (* type_correctness *)
-  - eapply bs_castdn with (A:=A'0). exact H0. admit. (* breduce *) auto.
+  - admit.
+   (* eapply bs_castdn. exact H0. admit. breduce auto. *)
   - eapply bs_forall_l with (t:=t'); eauto...
     + eapply usub_elab_keeps_mono; eauto. 
   - econstructor; eauto.
@@ -292,33 +301,44 @@ Ltac solve_trivial_bmono :=
 
 Lemma busub_elab_keeps_mono : forall Γ' e1' e2' d A' Γ e1 e2 A,
    busub_elab Γ' e1' e2' d A' Γ e1 e2 A ->
-       (mono_btype e1' /\ mono_btype e2' -> mono_type e1 /\ mono_type e2).
+       (mono_btype e1' /\ mono_btype e2' -> mono_type e1 /\ mono_type e2) /\ lc_expr e1 /\ lc_expr e2.
 Proof.
   intros.
   induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_bmono.
-  - econstructor. admit. (* *** *)
-  - econstructor. admit. (* *** *)
-  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
-    + admit. (* *** *)
-    + admit. (* *** *)
-  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
-    + admit. (* *** *)
-    + admit. (* *** *)
-  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
-  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition.
-  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition. 
-    + admit. (* *** *)
-    + admit. (* *** *)
-  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); intros; inst_cofinites_with x; intuition. 
-    + admit. (* *** *)
-    + admit. (* *** *)
-  - destruct_bmono. constructor. intuition. admit. (* *** *)
-  - destruct_bmono. constructor. intuition. admit. (* *** *)
+  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); auto.
+    + inst_cofinites_with_new. eapply lc_e_abs_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+    + intros. inst_cofinites_with x; intuition.
+  - destruct_bmono. eapply mono_lambda with (L:= L `union` L0 `union` L1); auto.
+    + inst_cofinites_with_new. eapply lc_e_abs_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+    + intros. inst_cofinites_with x; intuition.
+  - inst_cofinites_with_new. apply lc_e_abs_exists with (x1:=x); auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+  - inst_cofinites_with_new. apply lc_e_abs_exists with (x1:=x); auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1).
+    + intuition.
+    + intros. inst_cofinites_with x. intuition.
+  - destruct_bmono. eapply mono_pi with (L:= L `union` L0 `union` L1).
+    + intuition.
+    + intros. inst_cofinites_with x. intuition.
+  - inst_cofinites_with_new. eapply lc_e_pi_exists with (x1:=x); intuition.
+  - inst_cofinites_with_new. eapply lc_e_pi_exists with (x1:=x); intuition.
+  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); auto.
+    + inst_cofinites_with_new. eapply lc_e_bind_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+    + intros. inst_cofinites_with x. intuition.
+  - destruct_bmono. eapply mono_bind with (L:= L `union` L0 `union` L1); auto.
+    + inst_cofinites_with_new. eapply lc_e_bind_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+    + intros. inst_cofinites_with x. intuition. 
+  - inst_cofinites_with_new. eapply lc_e_bind_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+  - inst_cofinites_with_new. eapply lc_e_bind_exists with (x1:=x). auto. econstructor; fold open_expr_wrt_expr_rec; intuition.
+  - inst_cofinites_with_new. eapply lc_e_all_exists with (x1:=x); intuition.
+  - inst_cofinites_with_new. eapply lc_e_all_exists with (x1:=x); intuition.
+  - inst_cofinites_with_new. eapply lc_e_all_exists with (x1:=x); intuition.
+  - inst_cofinites_with_new. eapply lc_e_all_exists with (x1:=x); intuition.
   - destruct_bmono; intuition.
   - destruct_bmono; intuition.
   - intuition.
   - intuition.
-Admitted.
+Qed.
+
 
 Lemma inv_forall_new : forall Γ A B t,
   Γ ⊢ e_all A B : ⋆ -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⋆.
@@ -413,8 +433,8 @@ Proof.
         -- auto.
         -- rewrite <- x. auto.
         -- admit.
-  - auto.
-  - admit.
+  - admit. (* breduce *) 
+  - admit. (* breduce *) 
 Admitted.
 
 

@@ -36,10 +36,6 @@ Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
 Proof.
   intros. induction H; auto. 
-  - inst_cofinites_with_new; eapply lc_e_abs_exists with (x1:=x); auto.
-    constructor; auto.
-  - inst_cofinites_with_new; eapply lc_e_bind_exists with (x1:=x); auto.
-    constructor; auto.
 Qed.
 
   
@@ -91,21 +87,25 @@ Proof.
   - induction i.
     + split. constructor. auto.
     + apply IHi. inversion w. auto. inversion H0. auto.
-  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.  
-    repeat split; solve_lc_with x0.
+  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. repeat split. 
+    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
+    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
+    eapply lc_e_pi_exists with (x1:=x0); auto. 
   - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
     repeat split; auto; solve_lc_with x0.
   - destruct_conjs. repeat split; try  constructor; auto.
     inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
-  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. 
-    repeat split; solve_lc_with x0.
+  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.
+    repeat split.
+    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
+    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
+    eapply lc_e_all_exists with (x1:=x0); auto. 
   - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H3 x0 Fr). destruct_conjs.
     solve_lc_with x0.
   - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
     solve_lc_with x0.
   - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
-Qed. 
-
+Qed.
 
 Theorem usub_context_is_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
@@ -292,7 +292,6 @@ Proof.
   - eapply s_sub with (e_pi A2 B2) k2.
     + pick fresh x and apply s_abs; eauto using narrowing_cons.
     + pick fresh x and apply s_pi; eauto.
-      eapply narrowing_cons; eauto.
   - pose proof H4 as H5.
     pick fresh x; specialize (H5 x Fr);
       apply wt_wf in H5; inversion H5; subst; eauto.

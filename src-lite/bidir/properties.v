@@ -219,16 +219,14 @@ Proof.
   (** greduce **)
   - dependent destruction H2.
     + apply gr_reduce; auto. apply bwf_lc. auto.
-    + dependent destruction b.
-  - eapply gr_all with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)) (t:=t); eauto.
-    intros; weakening_auto.
-
+    + econstructor. apply bwf_lc. auto. auto. 
+  - eapply gr_all with (t:=t); auto.
+  
   (** infer_app **)
   - econstructor; eauto. apply bwf_lc. eauto.
   - dependent destruction H4. 
     intros. eapply iapp_all with (t:=t); eauto.
 Qed.
-
 
 Theorem bidir_weakening' : forall Γ1 Γ2 Γ3 e1 e2 d A,
   busub (Γ1,,'       Γ3) e1 e2 d A -> ⫦ Γ1 ,,' Γ2 ,,' Γ3 ->
@@ -294,7 +292,7 @@ Scheme  busub_narrowing_mut       := Induction for busub       Sort Prop
   with  greduce_narrowing_mut     := Induction for greduce     Sort Prop
   with  infer_app_narrowing_mut   := Induction for infer_app   Sort Prop.
 
-Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
+(* Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
   busub (Γ1,' x : B,,' Γ2) e1 e2 d C -> 
   forall A k, Γ1 ⊢ A <: B ⇒ ⧼ k ⧽' -> 
   busub (Γ1,' x : A,,' Γ2) e1 e2 d C.
@@ -353,9 +351,9 @@ Proof with autorewrite with bctx; eauto.
       eapply bctx_dom_narrowing_eq.
 
   (* P1 *)
-  - dependent destruction b; econstructor; eauto; eapply bidir_narrowing_lc_helper; eauto.
-  - eapply gr_all with (L:=L); eauto. intros.
-    inst_cofinites_with x0. eauto...
+  - admit. 
+  (* dependent destruction b; econstructor; eauto; eapply bidir_narrowing_lc_helper; eauto. *)
+  - eapply gr_all; eauto. 
 
   (* P2 *)
   - econstructor; eauto. eapply bidir_narrowing_lc_helper; eauto.
@@ -363,7 +361,7 @@ Proof with autorewrite with bctx; eauto.
 Admitted. 
 
 
-Hint Resolve bidir_narrowing : bidir.
+Hint Resolve bidir_narrowing : bidir. *)
 
 (* Theorem bidir_elab_narrowing : forall Γ1' x B' Γ2' e1' e2' d C' Γ1 B Γ2 e1 e2 C,
   busub_elab (Γ1',' x : B',,' Γ2') e1' e2' d C' (Γ1, x : B,, Γ2) e1 e2 C ->
