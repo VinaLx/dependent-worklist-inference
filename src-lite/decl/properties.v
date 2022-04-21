@@ -32,6 +32,17 @@ Scheme wf_mut   := Induction for wf_context  Sort Prop
   with             Induction for usub        Sort Prop.
 
 
+Lemma open_subst_eq : forall e x v, 
+  x `notin` fv_expr e -> lc_expr v  ->
+    e ^^ v = [v /_ x] e ^^ `x.
+Proof.
+  intros.  
+  rewrite subst_expr_open_expr_wrt_expr. simpl.
+  rewrite eq_dec_refl.
+  rewrite subst_expr_fresh_eq.
+  all : auto.
+Qed. 
+
 Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
 Proof.
@@ -105,6 +116,26 @@ Proof.
   - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
     solve_lc_with x0.
   - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
+Qed.
+
+
+Lemma usub_all_lc : forall Γ e1 e2 A,
+  usub Γ e1 e2 A -> lc_context Γ /\ lc_expr e1 /\ lc_expr e2 /\ lc_expr A.
+Proof.
+  intros.
+  pattern Γ, e1, e2, A, H.
+  eapply usub_mut with (
+    P0 := fun Γ (_ : ⊢ Γ) => lc_context Γ
+  ); intros; destruct_conjs; try solve [constructor; auto | repeat (split; constructor)].
+  - dependent induction i; intuition.
+    + dependent destruction w. dependent destruction H2. intuition.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - intuition. dependent destruction H4. apply lc_body_expr_wrt_expr; auto.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
 Qed.
 
 Theorem usub_context_is_wf : forall Γ e1 e2 A,
