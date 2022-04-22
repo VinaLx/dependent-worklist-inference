@@ -53,16 +53,6 @@ Ltac destruct_mono :=
     | H : mono_type (?P ?x) |- _ => dependent destruction H
     end.
 
-Ltac solve_lc_bexpr := 
-  repeat 
-    match goal with 
-    | _ : _ |- lc_bexpr (be_abs ?e) => inst_cofinites_with_new; eapply lc_be_abs_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_pi ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_pi_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_all ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_all_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_bind ?e1) =>  inst_cofinites_with_new; eapply lc_be_bind_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (?e) => econstructor
-    end.
-    
 Ltac solve_trivial_mono := 
   destruct_mono; econstructor; intuition; eauto; fail.
 
@@ -75,9 +65,9 @@ Lemma usub_elab_keeps_mono : forall Γ e1 e2 A Γ' e1' e2' A',
 Proof.
  intros.
  induction H; repeat split; destruct_conjs; intros; auto; try solve_trivial_mono; try solve_lc_bexpr.
- - destruct_mono. econstructor. inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); intuition. 
+ - destruct_mono. econstructor. solve_lc_bexpr. 
   + eapply bmono_lambda with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition. 
- - destruct_mono. econstructor. inst_cofinites_with_new. eapply lc_be_pi_exists with (x1:=x); intuition. 
+ - destruct_mono. econstructor. solve_lc_bexpr.
   + eapply bmono_lambda with (L:=L `union` (L0 `union` L1)). intros. inst_cofinites_with x. intuition. 
  - destruct_mono. eapply bmono_pi with (L:=L `union` (L0 `union` L1)). intuition. intros. inst_cofinites_with x. intuition.
  - destruct_mono. eapply bmono_pi with (L:=L `union` (L0 `union` L1)). intuition. intros. inst_cofinites_with x. intuition.
@@ -290,17 +280,6 @@ Ltac destruct_bmono :=
 
 Ltac solve_trivial_bmono := 
     destruct_bmono; try solve [intuition | econstructor; intuition; eauto]; fail.   
-
-Ltac solve_lc_expr := 
-  repeat 
-    match goal with 
-    | _ : _ |- lc_expr (e_abs ?e1 ?e2) => inst_cofinites_with_new; eapply lc_e_abs_exists; intuition; eauto; econstructor; 
-                                      fold open_expr_wrt_expr_rec; intuition; eauto
-    | _ : _ |- lc_expr (e_pi ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_pi_exists; intuition; eauto
-    | _ : _ |- lc_expr (e_all ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_all_exists; intuition; eauto
-    | _ : _ |- lc_expr (e_bind ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_bind_exists; intuition; eauto; econstructor; 
-                                        fold open_expr_wrt_expr_rec; intuition; eauto
-    end; auto.
         
 
 Lemma busub_elab_keeps_mono : forall Γ' e1' e2' d A' Γ e1 e2 A,
@@ -330,7 +309,7 @@ Proof.
 Qed.
 
 
-Lemma inv_forall : forall Γ A B,
+Lemma usub_forall_open : forall Γ A B,
   Γ ⊢ e_all A B : ⋆ -> exists L, (forall x, x `notin` L -> Γ, x : A ⊢ B ^^ `x : ⋆ ).
 Proof.
   intros.
@@ -343,7 +322,7 @@ Proof.
 Qed.
 
 
-Lemma open_subst_usub : forall Γ x A B t,
+Lemma usub_open_subst : forall Γ x A B t,
   Γ, x : A ⊢ B ^^ ` x : ⧼ k_star ⧽ -> x `notin` fv_expr B -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⋆.
 Proof.
   intros.
@@ -405,47 +384,40 @@ Proof.
     + eauto.
   - eapply ott.s_forall_l with (t:=t); eauto.
     + eapply busub_elab_keeps_mono; eauto.
-  - econstructor; eauto.
+  - eauto.
   - eapply ott.s_forall; eauto.
   - auto.
   - eapply ott.s_sub; eauto.
+ 
+  (* P0 *)
   - econstructor; eauto.
     + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
-  - dependent destruction F. dependent destruction i.
+
+  (* P1 *)
+  -  assert (mono_type t) as Hmonot. { eapply busub_elab_keeps_mono with (e1':=t'); eauto. }
+     dependent destruction F. dependent destruction i.
     + intros. rewrite x.
-      specialize (inv_forall Γ0 A0 B H2). intros. destruct H3 as [L].
-      eapply type_correctness in H0 as HtcA. destruct HtcA.
+      specialize (usub_forall_open Γ0 A0 B H2). intros. destruct H3 as [L].
+      eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
       * subst. eapply not_eall_box in H2. contradiction. 
-      * destruct H4 as [k]. eapply ott.s_forall_l with (t:=t); eauto.
-        -- eapply busub_elab_keeps_mono; eauto.
-        -- inst_cofinites_by (L `union` fv_expr B). eapply open_subst_usub; eauto.
-           eapply busub_elab_keeps_mono; eauto.
+      * destruct HwkA as [k]. eapply ott.s_forall_l with (t:=t); eauto.
+        inst_cofinites_by (L `union` fv_expr B). eapply usub_open_subst; eauto.
     + intros. rewrite <- x in H3.
-      specialize (inv_forall Γ0 A0 B H4). intros. 
-      destruct H5 as [L]. inst_cofinites_by (L `union` fv_expr B `union` ctx_dom Γ0).
-      assert (¬ x1 `in` fv_expr B ) by auto.
-      assert (mono_type t) as Hmonot. { eapply busub_elab_keeps_mono with (e1':=t'); eauto. }
-      specialize (open_subst_usub Γ0 x1 A0 B t H5 H6 H0 Hmonot). intros.
-      eapply type_correctness in H0 as Htca. destruct Htca.
+      specialize (usub_forall_open _ _ _ H4). intros HBx. 
+      destruct HBx as [L]. inst_cofinites_by (L `union` fv_expr B `union` ctx_dom Γ0).
+      eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
       * subst. eapply not_eall_box in H4. contradiction.
-      * destruct H8 as [k]. rewrite <- x in H7. specialize (H3 H7). eapply ott.s_forall_l with (L:=L `union` ctx_dom Γ0 `union` singleton x1); eauto.
-        -- rewrite <- x. auto.
-        -- intros. 
-           assert (⊢Γ0). { apply wt_wf in H8. auto. }
-           assert (Γ0, x2 : A0, x1 : A0 ⊢ B ^^ ` x1 : ⧼ k_star ⧽). 
-              { replace (Γ0, x2 : A0, x1 : A0) with (Γ0,,(ctx_nil, x2 : A0),,(ctx_nil, x1 : A0)). 
-                apply weakening; auto. simpl. eapply ott.wf_cons with (k:=k); eauto.
-                replace (Γ0, x2 : A0) with (Γ0,,(ctx_nil, x2 : A0),,ctx_nil).
-                apply weakening; eauto. simpl. econstructor; eauto. auto. auto. 
-              }
-           assert (Γ0, x2 : A0 ⊢ ` x2 : A0). 
-              { econstructor; auto. econstructor; auto. eauto.  apply usub_all_lc in H8. eapply in_here; intuition. }
-            assert (mono_type ` x2) by auto.
-            specialize (substitution_cons (Γ0, x2:A0) x1 ⧼ k_star ⧽ A0 (B ^^ ` x1) (B ^^ ` x1) (`x2) H11 H12 H13). simpl. 
-            intros. eapply open_subst_usub; eauto.
+      * destruct HwkA as [k HwkA].
+        eapply ott.s_forall_l with (L:=L `union` ctx_dom Γ0 `union` singleton x1); eauto.
+        -- rewrite x in H3. apply H3. eapply usub_open_subst with (x:=x1) (A:=A0); eauto.
+        -- intros. apply wt_wf in HwkA as Hwf. eapply usub_open_subst with (x:=x1) (A:=A0); auto.
+           ++ replace (Γ0, x2 : A0, x1 : A0) with (Γ0,,(ctx_nil, x2 : A0),,(ctx_nil, x1 : A0)) by auto.
+              apply weakening; simpl; eauto. eapply ott.wf_cons with (k:=k); eauto. 
+              replace (Γ0, x2 : A0) with (Γ0,,(ctx_nil, x2 : A0),,ctx_nil) by auto.
+              apply weakening; simpl; eauto.
+           ++ econstructor; auto. econstructor; eauto. eapply in_here; eapply usub_all_lc; eauto.  
+
+  (* P2 *)
   - admit. (* breduce *) 
   - admit. (* breduce *) 
 Admitted.
-
-
- 

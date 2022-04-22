@@ -78,44 +78,24 @@ Proof.
 Qed.
 
 
-Ltac solve_lc_with x0 :=
-  match goal with
-  | _ : _ |- lc_expr (e_pi ?A ?B) => eapply lc_e_pi_exists with (x1:=x0); auto
-  | _ : _ |- lc_expr (e_abs ?A ?B) => eapply lc_e_abs_exists with (x1:=x0); auto; constructor; auto
-  | _ : _ |- lc_expr (e_bind ?A ?B) => eapply lc_e_bind_exists with (x1:=x0); auto; constructor; try fold open_expr_wrt_expr_rec; auto
-  | _ : _ |- lc_expr (e_all ?A ?B) => eapply lc_e_all_exists with (x1:=x0); auto
-  end.
-
-
 Lemma wf_lc : forall Γ,
   ⊢ Γ -> lc_context Γ.
 Proof.
   intros. 
   pattern Γ, H.
   apply wf_mut with
-    (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros; destruct_conjs;
+    (P0:= fun Γ e1 e2 A (_ : Γ ⊢ e1 <: e2 : A) => lc_expr e1 /\ lc_expr e2 /\ lc_expr A); intros; destruct_conjs;
   try solve [constructor; auto | repeat (split; constructor)].
   - induction i.
     + split. constructor. auto.
     + apply IHi. inversion w. auto. inversion H0. auto.
-  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. repeat split. 
-    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_pi_exists with (x1:=x0); auto. 
-  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
-    repeat split; auto; solve_lc_with x0.
-  - destruct_conjs. repeat split; try  constructor; auto.
-    inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
-  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.
-    repeat split.
-    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_all_exists with (x1:=x0); auto. 
-  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H3 x0 Fr). destruct_conjs.
-    solve_lc_with x0.
-  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
-    solve_lc_with x0.
-  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - repeat split; eauto. dependent destruction H3. apply lc_body_expr_wrt_expr; auto. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
 Qed.
 
 
@@ -129,13 +109,13 @@ Proof.
   ); intros; destruct_conjs; try solve [constructor; auto | repeat (split; constructor)].
   - dependent induction i; intuition.
     + dependent destruction w. dependent destruction H2. intuition.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
   - intuition. dependent destruction H4. apply lc_body_expr_wrt_expr; auto.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
-  - inst_cofinites_with_new; destruct_conjs. repeat split; auto; solve_lc_with x.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
 Qed.
 
 Theorem usub_context_is_wf : forall Γ e1 e2 A,
@@ -215,7 +195,8 @@ Qed.
 
 Lemma ctx_equiv : forall Γ1 Γ2 x A B,
   ctx_dom (Γ1, x : A,, Γ2) = ctx_dom (Γ1, x : B,, Γ2).
-intros.
+Proof.
+  intros.
   induction Γ2.
   - auto.
   - simpl. rewrite IHΓ2. auto.
@@ -357,8 +338,7 @@ Proof.
   + apply box_never_welltype in H0. contradiction.
   + apply box_never_welltype in H. contradiction.
   + apply box_never_welltype in H. contradiction.
-  + apply star_sub_inversion_l in H0.
-    eauto.
+  + apply star_sub_inversion_l in H0. eauto.
 Qed.
 
 
@@ -367,4 +347,3 @@ Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ ⊢ e3 : B -> mono_type e3 ->
     Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
 Admitted.
-

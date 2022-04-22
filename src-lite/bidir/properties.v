@@ -38,14 +38,6 @@ Scheme  bwf_context_lc_mut     := Induction for wf_bcontext Sort Prop
   with  busub_bwf_lc_mut       := Induction for busub       Sort Prop
   with  infer_app_bwf_lc_mut   := Induction for infer_app   Sort Prop.
 
-Ltac solve_lcb := 
-  match goal with 
-  | _ : _ |- lc_bexpr (be_abs ?e) => inst_cofinites_with_new; eapply lc_be_abs_exists; destruct_conjs; eauto
-  | _ : _ |- lc_bexpr (be_pi ?A ?B ) => inst_cofinites_with_new; eapply lc_be_pi_exists; destruct_conjs; eauto
-  | _ : _ |- lc_bexpr (be_bind ?e) => inst_cofinites_with_new; eapply lc_be_bind_exists; destruct_conjs; eauto
-  | _ : _ |- lc_bexpr (be_all ?A ?B ) => inst_cofinites_with_new; eapply lc_be_all_exists; destruct_conjs; eauto
-  end.
-
 
 Lemma bwf_lc : forall Γ',
   ⫦ Γ' -> lc_bcontext Γ'.
@@ -61,7 +53,7 @@ Proof.
     | fun_pi B C => forall x, lc_bexpr (C ^^' `'x)
     end
   ); 
-  intros; try (intuition; fail); repeat split; auto; try solve_lcb.
+  intros; try (intuition; fail); repeat split; auto; try solve_lc_bexpr.
   - induction i; auto. dependent destruction H0. dependent destruction w. auto.
   - intuition.
   - intuition.
@@ -82,7 +74,7 @@ Proof.
     | fun_pi B C => forall x, lc_bexpr (C ^^' `'x)
     end
   );
-  try (intuition; fail); repeat split; auto; try solve_lcb; intuition.
+  try (intuition; fail); repeat split; auto; try solve_lc_bexpr; intuition.
   + eapply bwf_lc; eauto. 
   + induction i; auto. dependent destruction w.  auto.
   + eapply bwf_lc; eauto.
@@ -369,5 +361,3 @@ Hint Resolve bidir_narrowing : bidir. *)
   busub_elab (Γ1',' x : A',,' Γ2') e1' e2' d C' (Γ1, x : A,, Γ2) e1 e2 C.
 Proof.
 Admitted. *)
-
-
