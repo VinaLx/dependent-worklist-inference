@@ -50,7 +50,7 @@ Proof.
 Qed.
 
   
-Lemma wt_wf : forall Γ e1 e2 A,
+Lemma usub_context_is_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
 Proof.
   intros; induction H; auto.
@@ -116,13 +116,6 @@ Proof.
   - destruct_conjs; repeat split; auto; solve_lc_expr. 
   - destruct_conjs; repeat split; auto; solve_lc_expr. 
   - destruct_conjs; repeat split; auto; solve_lc_expr. 
-Qed.
-
-Theorem usub_context_is_wf : forall Γ e1 e2 A,
-    Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
-Proof.
-  intros.
-  induction H; auto.
 Qed.
 
 
@@ -306,7 +299,7 @@ Proof.
     + pick fresh x and apply s_pi; eauto.
   - pose proof H4 as H5.
     pick fresh x; specialize (H5 x Fr);
-      apply wt_wf in H5; inversion H5; subst; eauto.
+      apply usub_context_is_wf in H5; inversion H5; subst; eauto.
   (* app, need equiv apply *)
   - eapply s_sub with (e_all A2 B2) k_star.
     + pick fresh x and apply s_bind; eauto using narrowing_cons.
@@ -314,20 +307,58 @@ Proof.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
 Qed.
 
-
-Lemma star_sub_inversion_l : forall Γ A B,
-    Γ ⊢ A <: ⋆ : B -> A = ⋆.
-Admitted.
-
-Theorem type_correctness : forall Γ e1 e2 A,
-    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
-Admitted.
-
 Lemma box_never_welltype : forall Γ A,
     ~ (Γ ⊢ ◻ : A).
 Proof.
   intros. intro.
   dependent induction H; auto.
+Qed.
+
+Lemma star_type_inversion : forall Γ A,
+    Γ ⊢ ⋆ : A -> A = ◻.
+Proof.
+  intros.
+  dependent induction H.
+  - auto.
+  - assert (A = ◻) by auto. subst.
+    apply refl_l in H0. apply box_never_welltype in H0. contradiction.
+Qed.
+
+Lemma star_type_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> B = ◻.
+Proof.
+  intros.
+  apply star_type_inversion with Γ.
+  now apply refl_r with A.
+Qed.
+
+Lemma star_type_inversion_r : forall Γ A B,
+    Γ ⊢ ⋆ <: A : B -> B = ◻.
+Proof.
+  intros.
+  apply star_type_inversion with Γ.
+  now apply refl_l with A.
+Qed.
+
+Lemma star_sub_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> A = ⋆.
+Proof.
+  intros.
+  dependent induction H; auto.
+  - apply star_type_inversion_l in H2. discriminate.
+Qed.
+
+
+Lemma kind_sub_inversion_l : forall Γ ek kr k,
+    Γ ⊢ ek <: e_kind kr : k -> ek = ⋆ /\ kr = k_star /\ k = ◻.
+Proof.
+  intros.
+  dependent induction H.
+  - auto.
+  - edestruct IHusub3. reflexivity. destruct H6. discriminate.
+  - edestruct IHusub1 as [E1 [E2 E3]]; auto.
+    subst.
+    apply refl_l in H0. now apply box_never_welltype in H0.
 Qed.
 
 Lemma not_eall_box : forall Γ B,
@@ -342,8 +373,82 @@ Proof.
 Qed.
 
 
+Lemma eall_open_var : forall Γ A B,
+  Γ ⊢ e_all A B : ⋆ -> exists L, (forall x, x `notin` L -> Γ, x : A ⊢ B ^^ `x : ⋆ ).
+Proof.
+  intros.
+  dependent induction H.
+  - exists L. eauto. 
+  - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
+  - exists L. eauto.
+  - eapply star_sub_inversion_l in H0. 
+    apply (IHusub1 _ _ (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). 
+Qed.
+
+
+Theorem substitution : forall Γ1 Γ2 x A B e1 e2 e3,
+  Γ1 , x : B ,, Γ2 ⊢ e1 <: e2 : A ->
+  Γ1 ⊢ e3 : B -> mono_type e3 ->
+  Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
+Proof.
+Admitted.
+
 Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ, x : B ⊢ e1 <: e2 : A ->
     Γ ⊢ e3 : B -> mono_type e3 ->
     Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
-Admitted.
+Proof.
+  intros *.
+  replace (Γ, x : B) with (Γ,, (ctx_nil, x:B),, ctx_nil) by auto.
+  intros.
+  replace Γ with (Γ,, ⟦ e3 /_ x ⟧ ctx_nil) by auto.
+  eapply substitution; eauto.
+Qed.
+
+Lemma eall_open_mono : forall Γ x A B t k,
+  Γ, x : A ⊢ B ^^ ` x : ⧼ k ⧽ -> x `notin` fv_expr B -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⧼ k ⧽.
+Proof.
+  intros.
+  specialize (substitution_cons _ _ _ _ _ _ _ H H1 H2).
+  simpl. intros.
+  apply monotype_lc in H2.
+  specialize (open_subst_eq _ _ _ H0 H2). intros.
+  rewrite <- H4 in H3. destruct k; auto.
+Qed.
+
+Lemma ctx_type_correct : forall Γ x A,
+    ⊢ Γ -> x :_ A ∈ Γ -> exists k, Γ ⊢ A : e_kind k.
+Proof.
+  intros * Wf.
+  induction Wf; simpl; intros.
+  - inversion H.
+  - dependent destruction H1.
+    + subst. exists k.  
+      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
+      eapply weakening; simpl; eauto.
+    + destruct (IHWf H2) as [k0 IH]. exists k0.
+      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
+      eapply weakening; simpl; eauto.
+Qed.
+
+Hint Resolve refl_l : tc.
+Hint Resolve refl_r : tc.
+Hint Resolve usub_context_is_wf : tc.
+
+Theorem type_correctness : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
+Proof.
+  intros * Hsub.
+  induction Hsub; eauto with tc.
+  - eauto using ctx_type_correct.
+  - right. exists k2. eauto 6 with tc.
+  - destruct k2; eauto. right. exists k_box. eauto with tc.
+  - destruct IHHsub2 as [Hk | [k Hk]]. 
+    inversion Hk. dependent induction Hk.
+    + inst_cofinites_by (L `union` fv_expr B). right. exists k. eapply eall_open_mono; eauto.
+    + eapply IHHk1; eauto.
+      eapply kind_sub_inversion_l in Hk2; intuition; eauto.
+Qed.
+
+
+

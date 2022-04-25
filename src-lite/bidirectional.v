@@ -309,31 +309,6 @@ Proof.
 Qed.
 
 
-Lemma usub_forall_open : forall Γ A B,
-  Γ ⊢ e_all A B : ⋆ -> exists L, (forall x, x `notin` L -> Γ, x : A ⊢ B ^^ `x : ⋆ ).
-Proof.
-  intros.
-  dependent induction H.
-  - exists L. intros. eauto. 
-  - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
-  - exists L. intros. eauto.
-  - eapply star_sub_inversion_l in H0. 
-    apply (IHusub1 A B (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). 
-Qed.
-
-
-Lemma usub_open_subst : forall Γ x A B t,
-  Γ, x : A ⊢ B ^^ ` x : ⧼ k_star ⧽ -> x `notin` fv_expr B -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⋆.
-Proof.
-  intros.
-  specialize (substitution_cons Γ x ⧼ k_star ⧽ A (B ^^ ` x) (B ^^ ` x) t H H1 H2).
-  simpl. intros.
-  apply monotype_lc in H2.
-  specialize (open_subst_eq B x t H0 H2). intros.
-  rewrite <- H4 in H3. auto.
-Qed.
-
-
 Lemma wf_bcontext_elab_same_dom : forall Γ' Γ,
   wf_bcontext_elab Γ' Γ -> bctx_dom Γ' = ctx_dom Γ.
 Proof.
@@ -397,25 +372,25 @@ Proof.
   -  assert (mono_type t) as Hmonot. { eapply busub_elab_keeps_mono with (e1':=t'); eauto. }
      dependent destruction F. dependent destruction i.
     + intros. rewrite x.
-      specialize (usub_forall_open Γ0 A0 B H2). intros. destruct H3 as [L].
+      specialize (eall_open_var _ _ _ H2). intros. destruct H3 as [L].
       eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
       * subst. eapply not_eall_box in H2. contradiction. 
-      * destruct HwkA as [k]. eapply ott.s_forall_l with (t:=t); eauto.
-        inst_cofinites_by (L `union` fv_expr B). eapply usub_open_subst; eauto.
+      * destruct HwkA as [k HwkA]. eapply ott.s_forall_l with (t:=t); eauto.
+        inst_cofinites_by (L `union` fv_expr B). eapply eall_open_mono; eauto.
     + intros. rewrite <- x in H3.
-      specialize (usub_forall_open _ _ _ H4). intros HBx. 
+      specialize (eall_open_var _ _ _ H4). intros HBx. 
       destruct HBx as [L]. inst_cofinites_by (L `union` fv_expr B `union` ctx_dom Γ0).
       eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
       * subst. eapply not_eall_box in H4. contradiction.
       * destruct HwkA as [k HwkA].
         eapply ott.s_forall_l with (L:=L `union` ctx_dom Γ0 `union` singleton x1); eauto.
-        -- rewrite x in H3. apply H3. eapply usub_open_subst with (x:=x1) (A:=A0); eauto.
-        -- intros. apply wt_wf in HwkA as Hwf. eapply usub_open_subst with (x:=x1) (A:=A0); auto.
+        -- rewrite x in H3. apply H3. eapply eall_open_mono with (x:=x1) (A:=A0); eauto.
+        -- intros. apply usub_context_is_wf in HwkA as Hwf. eapply eall_open_mono with (x:=x1) (A:=A0); auto.
            ++ replace (Γ0, x2 : A0, x1 : A0) with (Γ0,,(ctx_nil, x2 : A0),,(ctx_nil, x1 : A0)) by auto.
               apply weakening; simpl; eauto. eapply ott.wf_cons with (k:=k); eauto. 
               replace (Γ0, x2 : A0) with (Γ0,,(ctx_nil, x2 : A0),,ctx_nil) by auto.
               apply weakening; simpl; eauto.
-           ++ econstructor; auto. econstructor; eauto. eapply in_here; eapply usub_all_lc; eauto.  
+           ++ econstructor; eauto. eapply in_here; eapply usub_all_lc; eauto.  
 
   (* P2 *)
   - admit. (* breduce *) 
