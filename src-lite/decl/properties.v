@@ -71,6 +71,15 @@ Qed.
 
 Hint Rewrite ctx_app_cons : ctx.
 
+
+Lemma wf_context_split : forall Γ1 Γ2,
+  ⊢ Γ1,,Γ2 -> ⊢ Γ1.
+Proof.
+  induction Γ2; intros.
+  - auto.
+  - dependent destruction H. auto.
+Qed.
+
 Lemma weakening_auto_helper : forall Γ1 Γ2 x A,
     ⊢ Γ1 ,, Γ2 , x : A -> ⊢ Γ1 ,, (Γ2 , x : A).
 Proof.
@@ -123,30 +132,37 @@ Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
 
 
-Lemma lc_insert_middle : forall Γ1 Γ2 Γ3,
-    lc_context Γ2 -> lc_context (Γ1,,Γ3) -> lc_context (Γ1,,Γ2,,Γ3).
+Lemma lc_app : forall Γ1 Γ2, 
+  lc_context Γ1 -> lc_context Γ2 -> lc_context (Γ1,,Γ2).
 Proof.
-  intros.
-  induction Γ2.
+  induction Γ2; intros.
   - auto.
-  - inversion H. simpl in *.
-    induction Γ3.
-    + simpl in *. constructor; auto.
-    + simpl in *. inversion H0. 
-      specialize (IHΓ2 H3). inversion IHΓ2.
-      constructor; auto.
+  - simpl. inversion H0. constructor; auto.
 Qed.
 
-Lemma lc_middle : forall Γ1 Γ2 Γ3,
-    lc_context (Γ1,,Γ2,,Γ3) -> lc_context Γ2.
+Lemma lc_split_r : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ2.
 Proof.
-  intros.
-  induction Γ3.
-  - induction Γ2; simpl in *. auto.
-    inversion H. constructor; auto.
+  induction Γ2; intros.
+  - auto.
+  - inversion H. constructor; auto.
+Qed.
+
+Lemma lc_split_l : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ1.
+Proof.
+  induction Γ2; intros.
+  - auto.
   - inversion H. auto.
 Qed.
-  
+
+Lemma lc_split : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ1 /\ lc_context Γ2.
+Proof.
+  split. 
+  - now apply lc_split_l in H.
+  - now apply lc_split_r in H.
+Qed.
 
 Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
     lc_context Γ2 -> in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
@@ -157,7 +173,8 @@ Proof.
     + auto.
     + inversion H. simpl in *. econstructor; auto.
   - simpl in *. inversion H0. subst.
-    + apply in_here. 2: auto. apply lc_insert_middle; auto.
+    + apply in_here. 2: auto. apply lc_split in H5.
+      repeat apply lc_app. all : intuition.
     + apply in_there. auto. apply IHΓ3. auto.
 Qed.
 
@@ -169,7 +186,7 @@ Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   intros * H.
   dependent induction H; intros.
   - constructor. auto. apply in_ctx_weakening. apply wf_lc in H1.
-    apply lc_middle in H1. auto. auto.
+    apply lc_split_l in H1. apply lc_split_r in H1. auto. auto.
   - auto.
   - auto.
   - auto.
@@ -195,6 +212,64 @@ Proof.
   - simpl. rewrite IHΓ2. auto.
 Qed.
 
+Lemma binds_insert : forall Γ1 x (A : expr) Γ2,
+   lc_context Γ1 -> lc_context Γ2 -> lc_expr A -> x :_ A ∈ Γ1 , x : A ,, Γ2.
+Proof.
+  induction Γ2; simpl; intros.
+  - auto.   
+  - inversion H0. constructor; auto. 
+Qed.
+
+
+Lemma binds_in_dom : forall Γ x A,
+    x :_ A ∈ Γ -> x `in` ctx_dom Γ.
+Proof.
+  intros. induction Γ.
+  - inversion H.
+  - inversion H; simpl; auto.
+Qed.
+
+Lemma in_dom_insert : forall x Γ1 Γ2 (A : expr),
+    x `in` ctx_dom (Γ1 , x : A ,, Γ2).
+Proof.
+  induction Γ2; intros; simpl; auto.
+Qed.
+
+Lemma binds_type_equal : forall Γ1 x A B Γ2,
+    x :_ A ∈ Γ1 , x : B ,, Γ2 ->
+    ⊢ Γ1 , x : B ,, Γ2 ->
+    A = B.
+Proof.
+  unfold binds. intros. induction Γ2. simpl in *.
+  - inversion H.
+    + auto.
+    + inversion H0. subst.
+      apply binds_in_dom in H7. contradiction.
+  - inversion H.
+    + subst. inversion H0. 
+      assert (x0 `in` ctx_dom (Γ1 , x0 : B ,, Γ2))
+        by apply in_dom_insert. contradiction.
+    + inversion H0; auto.
+Qed.
+
+Lemma binds_type_not_equal : forall Γ1 x x' (A : expr) B C Γ2,
+    x :_ A ∈ Γ1 , x' : B ,, Γ2 ->
+    x' <> x ->
+    lc_expr C ->
+    x :_ A ∈ Γ1 , x' : C ,, Γ2.
+Proof.
+  intros.
+  induction Γ2.
+  - inversion H. 
+    + subst. contradiction.
+    + econstructor; auto.
+  - inversion H.
+    + simpl. econstructor. 
+      * apply lc_split in H6. destruct H6. inversion H6. 
+        apply lc_app; auto.
+      * auto. 
+    + simpl. constructor; auto.
+Qed.
 
 Theorem narrowing : forall Γ1 Γ2 x A B e1 e2 C k,
     Γ1, x : B,, Γ2 ⊢ e1 <: e2 : C ->
@@ -210,12 +285,15 @@ Proof with autorewrite with ctx; eauto.
              forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2);
     intros; subst.
   - destruct (x==x0). 
-    + subst. assert (A0=B) by admit. subst. eapply s_sub with (A:=A).
-      * apply s_var; auto. admit.
-      * replace (Γ1, x0 : A,, Γ2) with (Γ1,,((ctx_nil,x0 : A),,Γ2),,ctx_nil). eapply weakening.
-        simpl. eauto.
-        simpl. admit. admit.
-    + admit.
+    + subst. assert (A0=B) by now eapply binds_type_equal; eauto. subst. eapply s_sub with (A:=A).
+      * apply s_var; auto. apply usub_all_lc in Hsub. apply wf_lc in w. apply lc_split_r in w. eapply binds_insert; intuition.
+      * replace (Γ1, x0 : A,, Γ2) with (Γ1, x0 : A,, Γ2,,ctx_nil) by auto. eapply weakening; simpl; eauto.
+        replace (Γ1, x0 : A) with (Γ1,, (ctx_nil, x0 : A),,ctx_nil) by auto. eapply weakening; simpl; eauto.
+        specialize (H Γ2 (eq_refl _)). apply wf_context_split in H. auto.
+    + constructor.
+      * now eapply H.
+      * eapply binds_type_not_equal; eauto.
+        now apply usub_all_lc in Hsub.
   - auto.
   - auto.
   - auto.
@@ -234,7 +312,7 @@ Proof with autorewrite with ctx; eauto.
   - destruct Γ2; simpl in *; inversion H1; subst.
     + eauto using refl_l.
     + apply wf_cons with k0; auto. rewrite (ctx_equiv Γ1 Γ2 x A B). auto.
-Admitted.
+Qed.
 
 Corollary narrowing_cons : forall Γ x A B e1 e2 C k
   , Γ, x : B ⊢ e1 <: e2 : C -> Γ ⊢ A <: B : ⧼k⧽
@@ -286,7 +364,6 @@ Proof.
     + apply s_sub with (e_pi ([v2 /_ x] A1) ([v1 /_ x] B1)) k2.
       admit.
       * econstructor.
-
 Admitted.
 
 
@@ -442,7 +519,7 @@ Proof.
   induction Hsub; eauto with tc.
   - eauto using ctx_type_correct.
   - right. exists k2. eauto 6 with tc.
-  - destruct k2; eauto. right. exists k_box. eauto with tc.
+  - destruct k2; eauto with tc. 
   - destruct IHHsub2 as [Hk | [k Hk]]. 
     inversion Hk. dependent induction Hk.
     + inst_cofinites_by (L `union` fv_expr B). right. exists k. eapply eall_open_mono; eauto.
