@@ -35,6 +35,14 @@ Notation "⧼ k ⧽'" := (be_kind k)
 Notation "e ::' A" := (be_anno e A)
   (at level 50, no associativity) : bexpr_scope.
 
+Notation "'λ,' A , e : B" :=
+  (be_abs A (bb_anno e B))
+    (at level 50, A at level 50, e at level 50, no associativity) : bexpr_scope.
+
+Notation "'Λ,' A , e : B" :=
+  (be_bind A (bb_anno e B))
+    (at level 50, A at level 50, e at level 50, no associativity) : bexpr_scope.
+
 Notation "G ⊢ e1 <: e2 ⇒ A" := (busub G e1 e2 d_infer A)
     (at level 65, e1 at level 50, e2 at level 50, no associativity) : type_scope.
 
@@ -110,21 +118,24 @@ Notation "e1 <: e2 ⇐ A" :=
 Notation "e ⇐ A" :=
   (dw_check dob_none e e A) (at level 55, no associativity) : dwork_scope.
 
-Notation "e1 <: e2 ⇒ wl" :=
-  (dw_infer e1 e2 wl)
+Notation "e1 <: e2 ⇒ c" :=
+  (dw_infer e1 e2 c)
     (at level 55, e2 at level 50, no associativity) : dwork_scope.
 
-Notation "e ⇒ wl" :=
-  (dw_infer e e wl)
+Notation "e ⇒ c" :=
+  (dw_infer e e c)
     (at level 55, no associativity) : dwork_scope.
 
-Notation "A ⋅ e ⇒ wl" :=
-  (dw_infer_app A e wl)
-    ( at level 55, e at level 50
-    , no associativity) : dwork_scope.
+Notation "A ⟹ c" :=
+  (dw_infer_app A c)
+    ( at level 55, no associativity) : dwork_scope.
 
-Notation "A ⟼ wl" :=
-  (dw_reduce A wl)
+Notation "A ⟼ c" :=
+  (dw_reduce A c)
+    (at level 55, no associativity) : dwork_scope.
+
+Notation "c $ e" :=
+  (dw_apply c e)
     (at level 55, no associativity) : dwork_scope.
 
 (*

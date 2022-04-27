@@ -7,20 +7,23 @@ bkind, k :: 'bk_' ::= {{ com kind }}
   | *   :: :: star {{ com type of type }}
   | box :: :: box  {{ com type of type of type }}
 
+bbody, b :: 'bb_' ::= {{ com annotated function body }}
+  | e : A :: :: anno
+
 bexpr, e, A, B, C, D, t, s :: 'be_' ::= {{ com expressions }}
   | x     :: :: var  {{ com variable }}
   | k     :: :: kind {{ com type of type }}
   | n     :: :: num  {{ com integer value }}
   | int   :: :: int  {{ com integer type }}
-  | bot   :: :: bot  {{ com bottom value }}
-  | e1 e2 :: :: app  {{ com application }}
-  | lambda x     . e :: :: abs  (+ bind x in e +) {{ com abstraction }}
+  | bot : A :: :: bot  {{ com bottom value }}
+  | e1 e2   :: :: app  {{ com application }}
+  | lambda x : A . b :: :: abs  (+ bind x in b +) {{ com abstraction }}
   | pi     x : A . B :: :: pi   (+ bind x in B +) {{ com dependent product }}
-  | bind   x     . e :: :: bind (+ bind x in e +) {{ com implicit lambda }}
+  | bind   x : A . b :: :: bind (+ bind x in b +) {{ com implicit lambda }}
   | forall x : A . B :: :: all  (+ bind x in B +) {{ com implicit function type }}
 %  | mu     x : A . e :: :: mu   (+ bind x in e +) {{ com fix point expression }}
-  | castup e :: :: castup {{ com cast up }}
-  | castdn e :: :: castdn {{ com cast down }}
+  | castup [ A ] e :: :: castup {{ com cast up }}
+  | castdn       e :: :: castdn {{ com cast down }}
   | e : A :: :: anno {{ com annotation }}
   | ( e )         :: S :: paren {{ coq ([[e]]) }}
   | [ e1 / x ] e2 :: M :: subst {{ coq (open_bexpr_wrt_bexpr [[x e2]] [[e1]]) }}
@@ -50,6 +53,7 @@ dwork, w :: 'dw_' ::=
   | A =>> c :: :: infer_app
   | e --> c :: :: reduce
   | A <~: B :: :: compact
+  | c $ e   :: :: apply
 
 dworklist, wl :: 'dwl_' ::=
   | wnil         :: :: nil
@@ -66,8 +70,6 @@ formula :: formula_ ::=
   | x # e *    :: M :: erased_fresh
     {{ coq ([[x]] `notin` fv_eexpr (berase [[e]])) }}
   | A = B :: M :: equality {{ coq [[A]] = [[B]] }}
-  | A --*> B  :: M :: erased_reduce
-    {{ coq ereduce (berase [[A]]) (berase [[B]]) }}
 
 substitutions
   single e x :: subst
@@ -94,14 +96,14 @@ Fixpoint berase (e : bexpr) : eexpr :=
   | be_kind bk_box  => ee_kind ek_box
   | be_num n => ee_num n
   | be_int   => ee_int
-  | be_bot   => ee_bot
+  | be_bot A => ee_bot
   | be_app f a => ee_app (berase f) (berase a)
-  | be_abs  e  => ee_abs  (berase e)
-  | be_bind e  => ee_bind (berase e)
+  | be_abs  A (bb_anno e B) => ee_abs  (berase e)
+  | be_bind A (bb_anno e B) => ee_bind (berase e)
   | be_pi  A B => ee_pi  (berase A) (berase B)
   | be_all A B => ee_all (berase A) (berase B)
-  | be_castup e => ee_castup (berase e)
-  | be_castdn e => ee_castdn (berase e)
+  | be_castup A e => ee_castup (berase e)
+  | be_castdn e   => ee_castdn (berase e)
   | be_anno e A => berase e
   end
 .
@@ -127,7 +129,7 @@ mono int
 mono n
 
 ----------------- :: bot
-mono bot
+mono bot : A
 
 mono e1
 mono e2
@@ -141,11 +143,11 @@ mono pi x : A . B
 
 mono e
 -------------------------- :: lambda
-mono lambda x . e
+mono lambda x : A . e : B
 
 mono e
 ------------------------ :: bind
-mono bind x . e
+mono bind x : A . e : B
 
 % mono e
 % ---------------------- :: mu
@@ -153,7 +155,7 @@ mono bind x . e
 
 mono e
 ---------------------- :: castup
-mono castup e
+mono castup [A] e
 
 mono e
 ---------------------- :: castdn
@@ -174,15 +176,12 @@ e1 --> e2
 ---------------- :: app
 e1 e3 --> e2 e3
 
----------------------------------------------------------- :: beta
-((lambda x. e1) : pi x : A. B)  e2      --> [e2 : A / x] e1
-
----------------------------------------------------------- :: beta_anno
-((lambda x. e1) : pi x : A. B) (e2 : C) --> [e2 : C / x] e1
+------------------------------------------- :: beta
+(lambda x : A . e1 : B) e2 --> [e2 / x] e1
 
 mono e
------------------------------------------------------- :: inst
-((bind x. e1) : forall x : A. B) e2 --> ([e / x] (e1 : B)) e2
+--------------------------------------------- :: inst
+(bind x : A . e1 : B) e2 --> ([e / x] e1) e2
 
 % -------------------------------------- :: mu
 % mu x : A. e --> [mu x : A. e / x] e
@@ -192,11 +191,11 @@ e1 --> e2
 castdn e1 --> castdn e2
 
 mono e
-------------------------------------------------------------- :: cast_inst
-castdn ((bind x. e1) : forall x : A. B) --> castdn ([e / x] (e1 : B))
+----------------------------------------------------- :: cast_inst
+castdn (bind x : A . e1 : B) --> castdn ([e / x] e1)
 
 ---------------------------- :: cast_elim
-castdn ((castup e) : A) --> e
+castdn (castup [B] e) --> e
 
 e1 --> e2
 ------------------ :: anno
@@ -249,7 +248,7 @@ defn
 G |- e1 -->> e2 :: :: greduce :: 'gr_'
 by
 
-e1 --*> e2
+e1 --> e2
 ---------------- :: reduce
 G |- e1 -->> e2
 
@@ -282,14 +281,14 @@ G |- * <: * dir box
 G |- int <: int => *
 
 G |- A => k
--------------------------------- :: bot
-G |- bot <: bot <= A
+----------------------------- :: bot
+G |- bot : A <: bot : A => A
 
 G |- A => k1
 G , x : A |- B => k2
 G , x : A |- e1 <: e2 <= B
----------------------------------------------------- :: abs
-G |- lambda x . e1 <: lambda x . e2 <= pi x : A. B
+------------------------------------------------------------------- :: abs
+G |- lambda x : A . e1 : B <: lambda x : A . e2 : B => pi x : A. B
 
 G |- A1 => k1
 G |- A2 <: A1 => k1
@@ -310,8 +309,8 @@ G , x : A |- B  <: B => *
 G , x : A |- e1 <: e2 <= B
 x # e1*
 x # e2*
---------------------------------------------------- :: bind
-G |- bind x . e1 <: bind x . e2 <= forall x : A. B
+------------------------------------------------------------------ :: bind
+G |- bind x : A . e1 : B <: bind x : A. e2 : B => forall x : A. B
 
 % monotype mu x : t. s
 % G |- t : k
@@ -320,16 +319,16 @@ G |- bind x . e1 <: bind x . e2 <= forall x : A. B
 % G |- mu x : t. s <: mu x : t. s : t
 
 G |- A => k
-A --*> B
+A --> B
 G |- e1 <: e2 <= B
 --------------------------------------- :: castup
-G |- castup e1 <: castup e2 <= A
+G |- castup [A] e1 <: castup [A] e2 => A
 
 G |- B => k
 G |- A -->> B
 G |- e1 <: e2 => A
 --------------------------------------- :: castdn
-G |- castdn e1 <: castdn e2 <= B
+G |- castdn e1 <: castdn e2 => B
 
 mono t
 G |- A => k
