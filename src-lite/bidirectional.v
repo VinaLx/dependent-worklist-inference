@@ -388,8 +388,7 @@ Proof.
         -- intros. apply usub_context_is_wf in HwkA as Hwf. eapply eall_open_mono with (x:=x1) (A:=A0); auto.
            ++ replace (Γ0, x2 : A0, x1 : A0) with (Γ0,,(ctx_nil, x2 : A0),,(ctx_nil, x1 : A0)) by auto.
               apply weakening; simpl; eauto. eapply ott.wf_cons with (k:=k); eauto. 
-              replace (Γ0, x2 : A0) with (Γ0,,(ctx_nil, x2 : A0),,ctx_nil) by auto.
-              apply weakening; simpl; eauto.
+              apply weakening_cons; eauto.
            ++ econstructor; eauto. eapply in_here; eapply usub_all_lc; eauto.  
 
   (* P2 *)

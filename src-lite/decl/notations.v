@@ -1,5 +1,7 @@
+Require Export Unicode.Utf8.
+
 Require Export decl.ln_inf.
-Require Export Coq.Unicode.Utf8.
+
 
 (* sometimes '_' are used to avoid conflicts *)
 
