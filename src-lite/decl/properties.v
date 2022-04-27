@@ -32,6 +32,17 @@ Scheme wf_mut   := Induction for wf_context  Sort Prop
   with             Induction for usub        Sort Prop.
 
 
+Lemma open_subst_eq : forall e x v, 
+  x `notin` fv_expr e -> lc_expr v  ->
+    e ^^ v = [v /_ x] e ^^ `x.
+Proof.
+  intros.  
+  rewrite subst_expr_open_expr_wrt_expr. simpl.
+  rewrite eq_dec_refl.
+  rewrite subst_expr_fresh_eq.
+  all : auto.
+Qed. 
+
 Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
 Proof.
@@ -39,7 +50,7 @@ Proof.
 Qed.
 
   
-Lemma wt_wf : forall Γ e1 e2 A,
+Lemma usub_context_is_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
 Proof.
   intros; induction H; auto.
@@ -60,20 +71,20 @@ Qed.
 
 Hint Rewrite ctx_app_cons : ctx.
 
+
+Lemma wf_context_split : forall Γ1 Γ2,
+  ⊢ Γ1,,Γ2 -> ⊢ Γ1.
+Proof.
+  induction Γ2; intros.
+  - auto.
+  - dependent destruction H. auto.
+Qed.
+
 Lemma weakening_auto_helper : forall Γ1 Γ2 x A,
     ⊢ Γ1 ,, Γ2 , x : A -> ⊢ Γ1 ,, (Γ2 , x : A).
 Proof.
   auto.
 Qed.
-
-
-Ltac solve_lc_with x0 :=
-  match goal with
-  | _ : _ |- lc_expr (e_pi ?A ?B) => eapply lc_e_pi_exists with (x1:=x0); auto
-  | _ : _ |- lc_expr (e_abs ?A ?B) => eapply lc_e_abs_exists with (x1:=x0); auto; constructor; auto
-  | _ : _ |- lc_expr (e_bind ?A ?B) => eapply lc_e_bind_exists with (x1:=x0); auto; constructor; try fold open_expr_wrt_expr_rec; auto
-  | _ : _ |- lc_expr (e_all ?A ?B) => eapply lc_e_all_exists with (x1:=x0); auto
-  end.
 
 
 Lemma wf_lc : forall Γ,
@@ -82,36 +93,38 @@ Proof.
   intros. 
   pattern Γ, H.
   apply wf_mut with
-    (P0:= fun c e e0 e1 (_ : c ⊢ e <: e0 : e1) => lc_expr e /\ lc_expr e0 /\ lc_expr e1); intros; destruct_conjs;
+    (P0:= fun Γ e1 e2 A (_ : Γ ⊢ e1 <: e2 : A) => lc_expr e1 /\ lc_expr e2 /\ lc_expr A); intros; destruct_conjs;
   try solve [constructor; auto | repeat (split; constructor)].
   - induction i.
     + split. constructor. auto.
     + apply IHi. inversion w. auto. inversion H0. auto.
-  - destruct_conjs. pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs. repeat split. 
-    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_abs_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_pi_exists with (x1:=x0); auto. 
-  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H3 x0 Fr). destruct_conjs. 
-    repeat split; auto; solve_lc_with x0.
-  - destruct_conjs. repeat split; try  constructor; auto.
-    inversion H3. apply lc_body_expr_wrt_expr. auto. auto.
-  - pick_fresh x0. specialize (H2 x0 Fr). specialize (H4 x0 Fr). destruct_conjs.
-    repeat split.
-    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_bind_exists with (x1:=x0); auto. econstructor; fold open_expr_wrt_expr_rec; inst_cofinites_with x0; intuition.
-    eapply lc_e_all_exists with (x1:=x0); auto. 
-  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H3 x0 Fr). destruct_conjs.
-    solve_lc_with x0.
-  - destruct_conjs. repeat split; auto. pick_fresh x0. specialize (H2 x0 Fr). destruct_conjs.
-    solve_lc_with x0.
-  - pick fresh x0. specialize (H2 x0 Fr); destruct_conjs. repeat split; auto; solve_lc_with x0.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - repeat split; eauto. dependent destruction H3. apply lc_body_expr_wrt_expr; auto. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
 Qed.
 
-Theorem usub_context_is_wf : forall Γ e1 e2 A,
-    Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
+
+Lemma usub_all_lc : forall Γ e1 e2 A,
+  usub Γ e1 e2 A -> lc_context Γ /\ lc_expr e1 /\ lc_expr e2 /\ lc_expr A.
 Proof.
   intros.
-  induction H; auto.
+  pattern Γ, e1, e2, A, H.
+  eapply usub_mut with (
+    P0 := fun Γ (_ : ⊢ Γ) => lc_context Γ
+  ); intros; destruct_conjs; try solve [constructor; auto | repeat (split; constructor)].
+  - dependent induction i; intuition.
+    + dependent destruction w. dependent destruction H2. intuition.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - intuition. dependent destruction H4. apply lc_body_expr_wrt_expr; auto.
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
+  - destruct_conjs; repeat split; auto; solve_lc_expr. 
 Qed.
 
 
@@ -119,30 +132,37 @@ Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
 
 
-Lemma lc_insert_middle : forall Γ1 Γ2 Γ3,
-    lc_context Γ2 -> lc_context (Γ1,,Γ3) -> lc_context (Γ1,,Γ2,,Γ3).
+Lemma lc_app : forall Γ1 Γ2, 
+  lc_context Γ1 -> lc_context Γ2 -> lc_context (Γ1,,Γ2).
 Proof.
-  intros.
-  induction Γ2.
+  induction Γ2; intros.
   - auto.
-  - inversion H. simpl in *.
-    induction Γ3.
-    + simpl in *. constructor; auto.
-    + simpl in *. inversion H0. 
-      specialize (IHΓ2 H3). inversion IHΓ2.
-      constructor; auto.
+  - simpl. inversion H0. constructor; auto.
 Qed.
 
-Lemma lc_middle : forall Γ1 Γ2 Γ3,
-    lc_context (Γ1,,Γ2,,Γ3) -> lc_context Γ2.
+Lemma lc_split_r : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ2.
 Proof.
-  intros.
-  induction Γ3.
-  - induction Γ2; simpl in *. auto.
-    inversion H. constructor; auto.
+  induction Γ2; intros.
+  - auto.
+  - inversion H. constructor; auto.
+Qed.
+
+Lemma lc_split_l : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ1.
+Proof.
+  induction Γ2; intros.
+  - auto.
   - inversion H. auto.
 Qed.
-  
+
+Lemma lc_split : forall Γ1 Γ2, 
+  lc_context (Γ1,,Γ2) -> lc_context Γ1 /\ lc_context Γ2.
+Proof.
+  split. 
+  - now apply lc_split_l in H.
+  - now apply lc_split_r in H.
+Qed.
 
 Lemma in_ctx_weakening : forall Γ1 Γ2 Γ3 x A,
     lc_context Γ2 -> in_ctx x A (Γ1 ,, Γ3) -> in_ctx x A (Γ1 ,, Γ2 ,, Γ3).
@@ -153,7 +173,8 @@ Proof.
     + auto.
     + inversion H. simpl in *. econstructor; auto.
   - simpl in *. inversion H0. subst.
-    + apply in_here. 2: auto. apply lc_insert_middle; auto.
+    + apply in_here. 2: auto. apply lc_split in H5.
+      repeat apply lc_app. all : intuition.
     + apply in_there. auto. apply IHΓ3. auto.
 Qed.
 
@@ -165,7 +186,7 @@ Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   intros * H.
   dependent induction H; intros.
   - constructor. auto. apply in_ctx_weakening. apply wf_lc in H1.
-    apply lc_middle in H1. auto. auto.
+    apply lc_split_l in H1. apply lc_split_r in H1. auto. auto.
   - auto.
   - auto.
   - auto.
@@ -184,12 +205,71 @@ Qed.
 
 Lemma ctx_equiv : forall Γ1 Γ2 x A B,
   ctx_dom (Γ1, x : A,, Γ2) = ctx_dom (Γ1, x : B,, Γ2).
-intros.
+Proof.
+  intros.
   induction Γ2.
   - auto.
   - simpl. rewrite IHΓ2. auto.
 Qed.
 
+Lemma binds_insert : forall Γ1 x (A : expr) Γ2,
+   lc_context Γ1 -> lc_context Γ2 -> lc_expr A -> x :_ A ∈ Γ1 , x : A ,, Γ2.
+Proof.
+  induction Γ2; simpl; intros.
+  - auto.   
+  - inversion H0. constructor; auto. 
+Qed.
+
+
+Lemma binds_in_dom : forall Γ x A,
+    x :_ A ∈ Γ -> x `in` ctx_dom Γ.
+Proof.
+  intros. induction Γ.
+  - inversion H.
+  - inversion H; simpl; auto.
+Qed.
+
+Lemma in_dom_insert : forall x Γ1 Γ2 (A : expr),
+    x `in` ctx_dom (Γ1 , x : A ,, Γ2).
+Proof.
+  induction Γ2; intros; simpl; auto.
+Qed.
+
+Lemma binds_type_equal : forall Γ1 x A B Γ2,
+    x :_ A ∈ Γ1 , x : B ,, Γ2 ->
+    ⊢ Γ1 , x : B ,, Γ2 ->
+    A = B.
+Proof.
+  unfold binds. intros. induction Γ2. simpl in *.
+  - inversion H.
+    + auto.
+    + inversion H0. subst.
+      apply binds_in_dom in H7. contradiction.
+  - inversion H.
+    + subst. inversion H0. 
+      assert (x0 `in` ctx_dom (Γ1 , x0 : B ,, Γ2))
+        by apply in_dom_insert. contradiction.
+    + inversion H0; auto.
+Qed.
+
+Lemma binds_type_not_equal : forall Γ1 x x' (A : expr) B C Γ2,
+    x :_ A ∈ Γ1 , x' : B ,, Γ2 ->
+    x' <> x ->
+    lc_expr C ->
+    x :_ A ∈ Γ1 , x' : C ,, Γ2.
+Proof.
+  intros.
+  induction Γ2.
+  - inversion H. 
+    + subst. contradiction.
+    + econstructor; auto.
+  - inversion H.
+    + simpl. econstructor. 
+      * apply lc_split in H6. destruct H6. inversion H6. 
+        apply lc_app; auto.
+      * auto. 
+    + simpl. constructor; auto.
+Qed.
 
 Theorem narrowing : forall Γ1 Γ2 x A B e1 e2 C k,
     Γ1, x : B,, Γ2 ⊢ e1 <: e2 : C ->
@@ -205,12 +285,15 @@ Proof with autorewrite with ctx; eauto.
              forall Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 , x : A ,, Γ2);
     intros; subst.
   - destruct (x==x0). 
-    + subst. assert (A0=B) by admit. subst. eapply s_sub with (A:=A).
-      * apply s_var; auto. admit.
-      * replace (Γ1, x0 : A,, Γ2) with (Γ1,,((ctx_nil,x0 : A),,Γ2),,ctx_nil). eapply weakening.
-        simpl. eauto.
-        simpl. admit. admit.
-    + admit.
+    + subst. assert (A0=B) by now eapply binds_type_equal; eauto. subst. eapply s_sub with (A:=A).
+      * apply s_var; auto. apply usub_all_lc in Hsub. apply wf_lc in w. apply lc_split_r in w. eapply binds_insert; intuition.
+      * replace (Γ1, x0 : A,, Γ2) with (Γ1, x0 : A,, Γ2,,ctx_nil) by auto. eapply weakening; simpl; eauto.
+        replace (Γ1, x0 : A) with (Γ1,, (ctx_nil, x0 : A),,ctx_nil) by auto. eapply weakening; simpl; eauto.
+        specialize (H Γ2 (eq_refl _)). apply wf_context_split in H. auto.
+    + constructor.
+      * now eapply H.
+      * eapply binds_type_not_equal; eauto.
+        now apply usub_all_lc in Hsub.
   - auto.
   - auto.
   - auto.
@@ -229,7 +312,7 @@ Proof with autorewrite with ctx; eauto.
   - destruct Γ2; simpl in *; inversion H1; subst.
     + eauto using refl_l.
     + apply wf_cons with k0; auto. rewrite (ctx_equiv Γ1 Γ2 x A B). auto.
-Admitted.
+Qed.
 
 Corollary narrowing_cons : forall Γ x A B e1 e2 C k
   , Γ, x : B ⊢ e1 <: e2 : C -> Γ ⊢ A <: B : ⧼k⧽
@@ -281,7 +364,6 @@ Proof.
     + apply s_sub with (e_pi ([v2 /_ x] A1) ([v1 /_ x] B1)) k2.
       admit.
       * econstructor.
-
 Admitted.
 
 
@@ -294,7 +376,7 @@ Proof.
     + pick fresh x and apply s_pi; eauto.
   - pose proof H4 as H5.
     pick fresh x; specialize (H5 x Fr);
-      apply wt_wf in H5; inversion H5; subst; eauto.
+      apply usub_context_is_wf in H5; inversion H5; subst; eauto.
   (* app, need equiv apply *)
   - eapply s_sub with (e_all A2 B2) k_star.
     + pick fresh x and apply s_bind; eauto using narrowing_cons.
@@ -302,20 +384,58 @@ Proof.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
 Qed.
 
-
-Lemma star_sub_inversion_l : forall Γ A B,
-    Γ ⊢ A <: ⋆ : B -> A = ⋆.
-Admitted.
-
-Theorem type_correctness : forall Γ e1 e2 A,
-    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
-Admitted.
-
 Lemma box_never_welltype : forall Γ A,
     ~ (Γ ⊢ ◻ : A).
 Proof.
   intros. intro.
   dependent induction H; auto.
+Qed.
+
+Lemma star_type_inversion : forall Γ A,
+    Γ ⊢ ⋆ : A -> A = ◻.
+Proof.
+  intros.
+  dependent induction H.
+  - auto.
+  - assert (A = ◻) by auto. subst.
+    apply refl_l in H0. apply box_never_welltype in H0. contradiction.
+Qed.
+
+Lemma star_type_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> B = ◻.
+Proof.
+  intros.
+  apply star_type_inversion with Γ.
+  now apply refl_r with A.
+Qed.
+
+Lemma star_type_inversion_r : forall Γ A B,
+    Γ ⊢ ⋆ <: A : B -> B = ◻.
+Proof.
+  intros.
+  apply star_type_inversion with Γ.
+  now apply refl_l with A.
+Qed.
+
+Lemma star_sub_inversion_l : forall Γ A B,
+    Γ ⊢ A <: ⋆ : B -> A = ⋆.
+Proof.
+  intros.
+  dependent induction H; auto.
+  - apply star_type_inversion_l in H2. discriminate.
+Qed.
+
+
+Lemma kind_sub_inversion_l : forall Γ ek kr k,
+    Γ ⊢ ek <: e_kind kr : k -> ek = ⋆ /\ kr = k_star /\ k = ◻.
+Proof.
+  intros.
+  dependent induction H.
+  - auto.
+  - edestruct IHusub3. reflexivity. destruct H6. discriminate.
+  - edestruct IHusub1 as [E1 [E2 E3]]; auto.
+    subst.
+    apply refl_l in H0. now apply box_never_welltype in H0.
 Qed.
 
 Lemma not_eall_box : forall Γ B,
@@ -326,14 +446,86 @@ Proof.
   + apply box_never_welltype in H0. contradiction.
   + apply box_never_welltype in H. contradiction.
   + apply box_never_welltype in H. contradiction.
-  + apply star_sub_inversion_l in H0.
-    eauto.
+  + apply star_sub_inversion_l in H0. eauto.
 Qed.
 
+
+Lemma eall_open_var : forall Γ A B,
+  Γ ⊢ e_all A B : ⋆ -> exists L, (forall x, x `notin` L -> Γ, x : A ⊢ B ^^ `x : ⋆ ).
+Proof.
+  intros.
+  dependent induction H.
+  - exists L. eauto. 
+  - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
+  - exists L. eauto.
+  - eapply star_sub_inversion_l in H0. 
+    apply (IHusub1 _ _ (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). 
+Qed.
+
+
+Theorem substitution : forall Γ1 Γ2 x A B e1 e2 e3,
+  Γ1 , x : B ,, Γ2 ⊢ e1 <: e2 : A ->
+  Γ1 ⊢ e3 : B -> mono_type e3 ->
+  Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
+Proof.
+Admitted.
 
 Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ, x : B ⊢ e1 <: e2 : A ->
     Γ ⊢ e3 : B -> mono_type e3 ->
     Γ ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
-Admitted.
+Proof.
+  intros *.
+  replace (Γ, x : B) with (Γ,, (ctx_nil, x:B),, ctx_nil) by auto.
+  intros.
+  replace Γ with (Γ,, ⟦ e3 /_ x ⟧ ctx_nil) by auto.
+  eapply substitution; eauto.
+Qed.
+
+Lemma eall_open_mono : forall Γ x A B t k,
+  Γ, x : A ⊢ B ^^ ` x : ⧼ k ⧽ -> x `notin` fv_expr B -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⧼ k ⧽.
+Proof.
+  intros.
+  specialize (substitution_cons _ _ _ _ _ _ _ H H1 H2).
+  simpl. intros.
+  apply monotype_lc in H2.
+  specialize (open_subst_eq _ _ _ H0 H2). intros.
+  rewrite <- H4 in H3. destruct k; auto.
+Qed.
+
+Lemma ctx_type_correct : forall Γ x A,
+    ⊢ Γ -> x :_ A ∈ Γ -> exists k, Γ ⊢ A : e_kind k.
+Proof.
+  intros * Wf.
+  induction Wf; simpl; intros.
+  - inversion H.
+  - dependent destruction H1.
+    + subst. exists k.  
+      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
+      eapply weakening; simpl; eauto.
+    + destruct (IHWf H2) as [k0 IH]. exists k0.
+      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
+      eapply weakening; simpl; eauto.
+Qed.
+
+Hint Resolve refl_l : tc.
+Hint Resolve refl_r : tc.
+Hint Resolve usub_context_is_wf : tc.
+
+Theorem type_correctness : forall Γ e1 e2 A,
+    Γ ⊢ e1 <: e2 : A -> A = ◻ \/ exists k, Γ ⊢ A : e_kind k.
+Proof.
+  intros * Hsub.
+  induction Hsub; eauto with tc.
+  - eauto using ctx_type_correct.
+  - right. exists k2. eauto 6 with tc.
+  - destruct k2; eauto with tc. 
+  - destruct IHHsub2 as [Hk | [k Hk]]. 
+    inversion Hk. dependent induction Hk.
+    + inst_cofinites_by (L `union` fv_expr B). right. exists k. eapply eall_open_mono; eauto.
+    + eapply IHHk1; eauto.
+      eapply kind_sub_inversion_l in Hk2; intuition; eauto.
+Qed.
+
+
 
