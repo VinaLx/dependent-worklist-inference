@@ -9,6 +9,7 @@ Definition to_k (bk : bkind) : kind :=
   end
 .
 
+(*
 Inductive decl_app_fun : Type :=
 | dfun_pi (A : expr) (B : expr)
 .
@@ -150,6 +151,31 @@ with busub_elab
   -> busub_elab Γ' e1' e2' d_check B' Γ e1 e2 B
 .
 
+*)
+
+Fixpoint to_decl (e : bexpr) : expr :=
+  match e with
+  | ↑' n => ↑ n
+  | `' x => `x
+  | be_int => e_int
+  | be_kind k => e_kind (to_k k)
+  | be_bot  A => e_bot  (to_decl A)
+  | be_num  n => e_num  n
+  | be_app f a => e_app (to_decl f) (to_decl a)
+  | be_abs  A b => e_abs  (to_decl A) (to_body b)
+  | be_bind A b => e_bind (to_decl A) (to_body b)
+  | be_pi  A B => e_pi  (to_decl A) (to_decl B)
+  | be_all A B => e_all (to_decl A) (to_decl B)
+  | be_castup A e => e_castup (to_decl A) (to_decl e)
+  | be_castdn   e => e_castdn             (to_decl e)
+  | be_anno e A => to_decl e
+  end
+with to_body (b : bbody) : body :=
+  match b with
+  | bb_anno e A => b_anno (to_decl e) (to_decl A)
+  end
+.
+
 Definition to_bk (k : kind) : bkind :=
   match k with
   | k_star => bk_star
@@ -184,8 +210,8 @@ with usub_elab
 | s_bot : forall Γ A1 A2 Γ' A1' A2' k
   , usub_elab Γ A1 A2 ⧼k⧽ Γ' A1' A2' ⧼(to_bk k)⧽'
   → usub_elab Γ A2 A1 ⧼k⧽ Γ' A2' A1' ⧼(to_bk k)⧽'
-  -> usub_elab Γ  (e_bot     A1 ) (e_bot     A2 ) A1
-              Γ' (be_bot ::' A1') (be_bot ::' A2') A1'
+  -> usub_elab Γ  (e_bot  A1 ) (e_bot  A2 ) A1
+              Γ' (be_bot A1') (be_bot A2') A1'
 | s_abs : forall L Γ Γ' A1 A1' e1 e1' B1 B1' A2 A2' e2 e2' B2 B2' k1 k2
   , usub_elab Γ A1 A2 ⧼k1⧽ Γ' A1' A2' ⧼(to_bk k1)⧽'
   → usub_elab Γ A2 A1 ⧼k1⧽ Γ' A2' A1' ⧼(to_bk k1)⧽'
@@ -204,9 +230,8 @@ with usub_elab
   → (forall x , x \notin L
     → usub_elab (Γ , x : A1 ) (e1  ^`  x) (e2  ^`  x) (B1  ^`  x)
                 (Γ','x : A1') (e1' ^`' x) (e2' ^`' x) (B1' ^`' x))
-  → usub_elab Γ (λ_ A1, e1 : B1) (λ_ A2, e2 : B2) (e_pi A1 B1)
-              Γ' (be_abs e1' ::' be_pi A1' B1')
-                 (be_abs e1' ::' be_pi A2' B2') (be_pi A1' B1')
+  → usub_elab Γ  (λ_ A1 , e1  : B1 ) (λ_ A2 , e2  : B2)  (e_pi  A1  B1 )
+              Γ' (λ, A1', e1' : B1') (λ, A2', e2' : B2') (be_pi A1' B1')
 | s_pi : forall L Γ Γ' A1 A1' B1 B1' A2 A2' B2 B2' k1 k2
   , usub_elab Γ A1 A1 ⧼k1⧽ Γ' A1' A1' ⧼(to_bk k1)⧽'
   -> usub_elab Γ A2 A1 ⧼k1⧽ Γ' A2' A1' ⧼(to_bk k1)⧽'
@@ -247,23 +272,22 @@ with usub_elab
       -> ( x  `notin` fv_eexpr (erase (e1  ^`  x))))
   -> ( forall x , x \notin  L
       -> ( x  `notin` fv_eexpr (erase (e2  ^`  x))))
-  → usub_elab Γ (Λ A1, e1 : B1) (Λ A2, e2 : B2) (e_all A1 B1)
-              Γ' (be_bind e1' ::' be_all A1' B1')
-                 (be_bind e1' ::' be_all A2' B2') (be_all A1' B1')
+  → usub_elab Γ  (Λ  A1 , e1  : B1 ) (Λ  A2 , e2  : B2 ) (e_all  A1  B1 )
+              Γ' (Λ, A1', e1' : B1') (Λ, A2', e2' : B2') (be_all A1' B1')
 | s_castup : forall Γ Γ' A1 A1' e1 e1' A2 A2' e2 e2' k B B'
   , usub_elab Γ A1 A2 ⧼k⧽ Γ' A1' A2' ⧼(to_bk k)⧽'
   → usub_elab Γ A2 A1 ⧼k⧽ Γ' A2' A1' ⧼(to_bk k)⧽'
   → A1 ⟶ B
   → A2 ⟶ B
   → usub_elab Γ e1 e2 B Γ' e1' e2' B'
-  → usub_elab Γ  (e_castup A1 e1)       (e_castup A2 e2)      A1
-              Γ' (be_castup e1' ::' A1') (be_castup e2' ::' A2') A1'
+  → usub_elab Γ  (e_castup  A1  e1 ) (e_castup  A2  e2 ) A1
+              Γ' (be_castup A1' e1') (be_castup A2' e2') A1'
 | s_castdn : forall Γ Γ' e1 e2 B k A e1' e2' A' B'
   , usub_elab Γ B B ⧼k⧽ Γ' B' B' ⧼(to_bk k)⧽'
   -> A ⟶ B
   -> usub_elab Γ e1 e2 A Γ' e1' e2' A'
   -> usub_elab Γ  (e_castdn  e1 ) (e_castdn  e2 ) B
-              Γ' (be_castdn e1') (be_castdn e2') B'
+              Γ' (be_castdn e1' ::' B') (be_castdn e2' ::' B') B'
 | s_forall_l : forall L Γ Γ' A B C t A' B' C' t' k
   , mono_type t
   -> usub_elab Γ A A ⧼k⧽ Γ' A' A' ⧼(to_bk k)⧽'
@@ -292,16 +316,17 @@ with usub_elab
   , usub_elab Γ e1 e2 A Γ' e1' e2' A'
   -> usub_elab Γ A B ⧼k⧽ Γ' A' B' ⧼(to_bk k)⧽'
   → usub_elab Γ B B ⧼k⧽ Γ' B' B' ⧼(to_bk k)⧽'
-  -> usub_elab Γ e1 e2 B Γ' (e1' ::' B') (e2' ::' B') B'.
-
-
+  -> usub_elab Γ e1 e2 B Γ' (e1' ::' B') (e2' ::' B') B'
+.
 
 Scheme usub_elab_mut
   :=   Induction for usub_elab Sort Prop
   with Induction for wf_context_elab Sort Prop.
 
+(*
 Scheme busub_elab_mut
   :=   Induction for busub_elab Sort Prop
   with Induction for wf_bcontext_elab Sort Prop
   with Induction for infer_app_elab Sort Prop
   with Induction for greduce_elab Sort Prop.
+*)
