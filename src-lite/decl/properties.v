@@ -1,7 +1,9 @@
-Require Export decl.notations.
-Require Import ln_utils.
 Require Import Program.Tactics.
-Require Export Coq.Program.Equality.
+Require Export Program.Equality.
+
+Require Export decl.ln_extra.
+Require Import ln_utils.
+
 
 Definition wf_dom : forall {Γ}, ⊢ Γ -> atoms.
 Proof.
@@ -31,17 +33,6 @@ Scheme usub_mut := Induction for usub        Sort Prop
 Scheme wf_mut   := Induction for wf_context  Sort Prop
   with             Induction for usub        Sort Prop.
 
-
-Lemma open_subst_eq : forall e x v, 
-  x `notin` fv_expr e -> lc_expr v  ->
-    e ^^ v = [v /_ x] e ^^ `x.
-Proof.
-  intros.  
-  rewrite subst_expr_open_expr_wrt_expr. simpl.
-  rewrite eq_dec_refl.
-  rewrite subst_expr_fresh_eq.
-  all : auto.
-Qed. 
 
 Lemma monotype_lc : forall e,
     mono_type e -> lc_expr e.
@@ -127,10 +118,8 @@ Proof.
   - destruct_conjs; repeat split; auto; solve_lc_expr. 
 Qed.
 
-
 Hint Resolve refl_l : weakening.
 Hint Resolve weakening_auto_helper : weakening.
-
 
 Lemma lc_app : forall Γ1 Γ2, 
   lc_context Γ1 -> lc_context Γ2 -> lc_context (Γ1,,Γ2).
@@ -201,6 +190,15 @@ Proof with unfold wf_dom; autorewrite with ctx; eauto 6 with weakening.
   - pick fresh x and apply s_forall_r for weakening...
   - pick fresh x and apply s_forall for weakening...
   - eapply s_sub; eauto 3.
+Qed.
+
+Corollary weakening_cons : forall Γ x B e1 e2 A,
+    Γ ⊢ e1 <: e2 : A ->
+    ⊢ Γ , x : B ->
+    Γ , x : B ⊢ e1 <: e2 : A.
+Proof.
+  intros. replace (Γ , x : B) with (Γ ,, (ctx_nil, x : B) ,, ctx_nil) by reflexivity.
+  now apply weakening.
 Qed.
 
 Lemma ctx_equiv : forall Γ1 Γ2 x A B,
@@ -288,7 +286,7 @@ Proof with autorewrite with ctx; eauto.
     + subst. assert (A0=B) by now eapply binds_type_equal; eauto. subst. eapply s_sub with (A:=A).
       * apply s_var; auto. apply usub_all_lc in Hsub. apply wf_lc in w. apply lc_split_r in w. eapply binds_insert; intuition.
       * replace (Γ1, x0 : A,, Γ2) with (Γ1, x0 : A,, Γ2,,ctx_nil) by auto. eapply weakening; simpl; eauto.
-        replace (Γ1, x0 : A) with (Γ1,, (ctx_nil, x0 : A),,ctx_nil) by auto. eapply weakening; simpl; eauto.
+        eapply weakening_cons; eauto.
         specialize (H Γ2 (eq_refl _)). apply wf_context_split in H. auto.
     + constructor.
       * now eapply H.
@@ -323,20 +321,91 @@ Proof.
     eauto using narrowing.
 Qed.
 
+Hint Resolve notin_fv_open_var : fr.
+
+Ltac solve_eq := 
+  repeat
+    match goal with 
+    | H : eq ?e ?e -> _ |- _ => specialize (H (eq_refl e))
+    end.
+
+Lemma fresh_ctx_fresh_expr : forall Γ a A x,
+    Γ ⊢ a : A -> x `notin` ctx_dom Γ -> x `notin` fv_expr a.
+Proof.
+  intros. generalize dependent x.
+  dependent induction H; intros; auto 3; simpl; 
+  try (inst_cofinites_with_new; solve_eq; inst_cofinites_with x; eauto with fr).
+  - induction G.
+    + inversion H0.
+    + dependent destruction H0; simpl in H2.
+      * auto.
+      * dependent destruction H; auto.
+Qed.
+
+Lemma fresh_binded : forall Γ1 x A Γ2,
+    ⊢ Γ1 , x : A ,, Γ2 -> x `notin` fv_expr A.
+Proof.
+  induction Γ2; simpl; intros.
+  - inversion H. subst. eapply fresh_ctx_fresh_expr; eauto.
+  - apply IHΓ2. now inversion H.
+Qed.
+
+Lemma notin_dom_bind_fresh : forall Γ x A x',
+    x' `notin` ctx_dom Γ -> x :_ A ∈ Γ -> ⊢ Γ -> x' `notin` fv_expr A.
+Proof.
+  induction Γ; simpl; intros.
+  - inversion H0.
+  - dependent destruction H1. dependent destruction H0.
+    + eapply fresh_ctx_fresh_expr; eauto. 
+    + eauto. 
+Qed.
+
+
 Lemma reduction_subst : forall e1 e2 x v,
   lc_expr v → e1 ⟶ e2 → [v /_ x] e1 ⟶ [v /_ x] e2.
 Proof.
   intros. induction H0.
-  - simpl. constructor. admit. auto.
-  - simpl. replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2));
-     [> constructor; admit| admit].
-  - admit.
+  - simpl. constructor. apply subst_expr_lc_expr; auto. auto.
+  - simpl. replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2)).
+    + constructor. apply subst_expr_lc_expr; auto. admit. admit. apply subst_expr_lc_expr; auto.
+    + apply eq_sym. apply subst_expr_open_expr_wrt_expr. auto.
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_inst;  admit. admit.
   - simpl. eauto.
-  - admit.
-  - simpl. constructor; admit.
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_cast_inst; admit. admit.
+  - simpl. constructor; apply subst_expr_lc_expr; auto.
 Admitted.
 
-Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
+
+Lemma binds_subst : forall Γ1 Γ2 x x' A B e,
+  ⊢ Γ1, x' : B,, Γ2 ->
+  x :_ A ∈ Γ1, x' : B,, Γ2 -> x <> x' -> lc_expr e -> x :_ [e /_ x'] A ∈ Γ1 ,, ⟦ e /_ x'⟧  Γ2.
+Proof.
+  induction Γ2; simpl; intros.
+  - dependent destruction H. inversion H2; subst.
+    + contradiction.
+    + assert (x' `notin` fv_expr A) by (eapply notin_dom_bind_fresh; eauto).
+      rewrite subst_expr_fresh_eq; auto.
+  - dependent destruction H. dependent destruction H2.
+    + constructor. eauto. 
+      apply lc_split in H2. destruct_conjs. inversion H2.
+      apply lc_app; eauto. eapply subst_context_lc_context; auto. 
+      apply subst_expr_lc_expr; auto.
+    + econstructor. apply subst_expr_lc_expr; auto. eauto.
+Qed.
+
+Hint Resolve binds_subst : subst_.
+
+Ltac subst_rewrite := 
+  match goal with 
+  | _ : _ |- (?Γ1,, ⟦ ?v /_ ?x ⟧ ?Γ2, ?x' : [?v /_ ?x] ?A) ⊢ _ _ : _ => replace (Γ1,, ⟦ v /_ x ⟧ Γ2, x' : [v /_ x] A ) with (Γ1,, ⟦ v /_ x ⟧ (Γ2, x' : A) ) by auto
+  | _ : _ |- usub _ (open_expr_wrt_expr (subst_expr ?v1 ?x ?B1) (e_var_f ?x0)) _ _ => 
+    replace (open_expr_wrt_expr (subst_expr v1 x B1) (e_var_f x0)) with  (open_expr_wrt_expr (subst_expr v1 x B1) (subst_expr v1 x (e_var_f x0)))
+  | _ : _ |- usub _ _ (open_expr_wrt_expr (subst_expr ?v1 ?x ?B1) (e_var_f ?x0)) _ => 
+  replace (open_expr_wrt_expr (subst_expr v1 x B1) (e_var_f x0)) with  (open_expr_wrt_expr (subst_expr v1 x B1) (subst_expr v1 x (e_var_f x0)))
+  (* | _ : _ |- usub _ _ (open_expr_wrt_expr (subst_expr ?v1 ?x ?B1) (e_var_f ?x0)) _ => assert (1 = 1) *)
+  end.
+
+(* Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
   , Γ1 , x : A ,, Γ2 ⊢ e1 <: e2 : B → forall v1 v2
   , Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A
   → Γ1 ,, ⟦v1 /_ x⟧ Γ2 ⊢ [v1 /_ x] e1 <: [v2 /_ x] e2 : [v1 /_ x] B
@@ -351,20 +420,42 @@ Proof.
       → Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A → ⊢ Γ1 ,, ⟦v1 /_ x⟧ Γ2);
     intros; subst; simpl.
   - destruct (x0 == x).
-    + admit.
-    + admit.
+    + subst. assert (A0=A) by now eapply binds_type_equal; eauto. subst.
+      assert (x `notin` fv_expr A) by (eapply fresh_binded; eauto). 
+      replace ([v1 /_ x] A) with A by (apply eq_sym; apply subst_expr_fresh_eq; eauto). 
+      replace (Γ1,, ⟦ v1 /_ x ⟧ Γ2) with (Γ1,, ⟦ v1 /_ x ⟧ Γ2,, ctx_nil) by auto; split; apply weakening; simpl; eauto.
+    + assert (lc_expr v1 /\ lc_expr v2) by (apply usub_all_lc in H1; intuition). destruct_conjs. 
+      split; eauto with subst_. 
   - eauto 6.
   - eauto 6.
   - eauto 6.
   - split.
-    + admit.
-    + admit.
+    + eapply s_bot with (k:=k); destruct k; simpl in *; try eapply H0; eauto; try eapply H1; eauto. 
+    + eapply s_sub with (A := [v1 /_ x] A2) (k:=k). eapply s_sub with (A := [v2 /_ x] A1) (k:=k).
+      eapply s_bot with (k:=k); destruct k; simpl in *; try eapply H0; eauto; try eapply H1; eauto.
+      * destruct k; simpl in *; eapply H0; eauto.
+      * apply refl_l in H2. destruct k; simpl in *; eapply H1; eauto.
   - split.
-    + pick fresh x' and apply s_abs; admit.
-    + apply s_sub with (e_pi ([v2 /_ x] A1) ([v1 /_ x] B1)) k2.
-      admit.
+    + eapply s_abs with (k1:=k1) (k2:=k2) (L:=L `union` singleton x).
+      destruct k1; simpl in *; eapply H0; eauto.
+      destruct k2; simpl in *; eapply H1; eauto.
+      all : intros; inst_cofinites_with x0; destruct k2; simpl in *.
+      (* * subst_rewrite. subst_rewrite. subst_rewrite. *)
+       replace (([v1 /_ x] B1) ^^ ` x0) with ([v1 /_ x] B1 ^^ ` x0). admit. rewrite subst_expr_open_expr_wrt_expr. simpl.
+       unfold eq_dec. destruct (EqDec_eq_of_X x0 x).  
+       ([v1 /_ x] B1) ^^ ` ([v1 /_ x] / x0) 
+        replace (([v2 /_ x] B2) ^^ ` x0) with ([v2 /_ x] B2 ^^ ` x0) by admit.
+        replace (Γ1,, ⟦ v1 /_ x ⟧ Γ2, x0 : [v1 /_ x] A1 ) with (Γ1,, ⟦ v1 /_ x ⟧ (Γ2, x0 : A1) ) by auto.
+        eapply H2; eauto.
+      all : admit.
+      *  admit. * admit. * admit. *  admit. * admit. * admit. *  admit. * admit. * admit. 
+    + apply s_sub with (e_pi ([v1 /_ x] A2) ([v2 /_ x] B1)) k2.
+      apply s_sub with (e_pi ([v2 /_ x] A1) ([v2 /_ x] B1)) k2.
+      eapply s_abs with (L:=L `union` singleton x) (k1:=k1) (k2:=k2). eapply H0; eauto. eapply H1; eauto. 
+      admit. admit. admit. admit. admit.
+      * econstructor; admit.
       * econstructor.
-Admitted.
+Admitted. *)
 
 
 Theorem refl_r : forall Γ e1 e2 A,
@@ -459,7 +550,7 @@ Proof.
   - exists L. intros. specialize (H1 x H3). apply refl_r in H1. auto.
   - exists L. eauto.
   - eapply star_sub_inversion_l in H0. 
-    apply (IHusub1 _ _ (eq_refl (e_all A B)) (eq_refl (e_all A B)) H0). 
+    apply (IHusub1 _ _ (eq_refl _) (eq_refl _) H0). 
 Qed.
 
 
@@ -500,12 +591,9 @@ Proof.
   induction Wf; simpl; intros.
   - inversion H.
   - dependent destruction H1.
-    + subst. exists k.  
-      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
-      eapply weakening; simpl; eauto.
+    + subst. exists k. eapply weakening_cons; eauto.
     + destruct (IHWf H2) as [k0 IH]. exists k0.
-      replace (G, x0 : A0) with (G,, (ctx_nil, x0 : A0),, ctx_nil) by auto.
-      eapply weakening; simpl; eauto.
+      eapply weakening_cons; eauto.
 Qed.
 
 Hint Resolve refl_l : tc.
@@ -526,6 +614,3 @@ Proof.
     + eapply IHHk1; eauto.
       eapply kind_sub_inversion_l in Hk2; intuition; eauto.
 Qed.
-
-
-
