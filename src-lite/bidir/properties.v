@@ -1,14 +1,18 @@
+Require Import Program.Tactics.
+Require Import Program.Equality.
+
 Require Import decl.notations.
 Require Export bidir.notations.
 Require Import bidir.elaboration.
 Require Import ln_utils.
-Require Import Coq.Program.Tactics.
-Require Import Coq.Program.Equality.
 
-Scheme Induction for busub Sort Prop
-  with Induction for wf_bcontext Sort Prop
-  with Induction for infer_app Sort Prop
-  with Induction for greduce Sort Prop.
+
+Lemma busub_context_is_wf : forall Γ e1 e2 d A,
+    busub Γ e1 e2 d A -> wf_bcontext Γ.
+Proof.
+  intros; induction H; auto.
+Qed.
+
 
 
 Lemma bctx_app_cons : forall Γ1 Γ2 x A,
@@ -56,8 +60,8 @@ Proof.
   intros; try (intuition; fail); repeat split; auto; try solve_lc_bexpr.
   - induction i; auto. dependent destruction H0. dependent destruction w. auto.
   - intuition.
-  - intuition.
-  - dependent destruction l0. auto.
+  - intuition. 
+  - dependent destruction l0. auto. 
 Qed.
 
 Scheme  busub_lc_mut           := Induction for busub       Sort Prop
@@ -83,7 +87,6 @@ Proof.
   + dependent destruction l0. auto.
 Qed.
 
-
 Scheme busub_refl_mut := Induction for busub     Sort Prop
   with  iapp_refl_mut := Induction for infer_app Sort Prop.
 
@@ -96,13 +99,6 @@ Qed.
 
 Hint Resolve bidir_refl_l : bidir.
 
-Theorem bidir_elab_refl_l : forall Γ' e1' e2' d A' Γ e1 e2 A,
-  busub_elab Γ' e1' e2' d A' Γ e1 e2 A -> 
-  busub_elab Γ' e1' e1' d A' Γ e1 e1 A.
-Proof.
-  intros.
-  induction H; try solve [ auto | econstructor; eauto ].
-Qed.
 
 Lemma lc_binsert_middle : forall Γ1 Γ2 Γ3,
     lc_bcontext Γ2 -> lc_bcontext (Γ1,,'Γ3) -> lc_bcontext (Γ1,,'Γ2,,'Γ3).
@@ -191,13 +187,13 @@ Proof.
   (** busub **)
   - constructor. auto. eapply in_bctx_weakening; auto. 
     eapply lc_bmiddle. apply bwf_lc. eauto.
-  - econstructor. eauto.
-  - eapply bs_abs with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto. 
+  - econstructor; eauto.
+  - eapply bs_abs with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto. admit. admit. admit.
   - eapply bs_pi with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros.
     + weakening_auto. 
     + specialize (H1 Γ3 Γ2 Γ1 H4). apply bidir_refl_l in H1. weakening_auto. auto.
   - eauto.
-  - eapply bs_bind with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto.
+  - eapply bs_bind with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto. admit. admit. admit.
   - eauto.
   - eauto.
   - eapply bs_forall_l with (L:=L `union` bctx_dom (Γ1,,'Γ2,,'Γ3)); eauto; intros; weakening_auto.
@@ -218,7 +214,8 @@ Proof.
   - econstructor; eauto. apply bwf_lc. eauto.
   - dependent destruction H4. 
     intros. eapply iapp_all with (t:=t); eauto.
-Qed.
+Admitted.
+
 
 Theorem bidir_weakening' : forall Γ1 Γ2 Γ3 e1 e2 d A,
   busub (Γ1,,'       Γ3) e1 e2 d A -> ⫦ Γ1 ,,' Γ2 ,,' Γ3 ->
@@ -243,9 +240,8 @@ Proof with autorewrite with bctx; eauto.
   (** busub **)
   - constructor. auto. eapply in_bctx_weakening; auto. 
     eapply lc_bmiddle. apply bwf_lc. eauto.
-  - econstructor. eauto.
-  - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x. eauto...
-    eapply H1; auto. simpl. admit.
+  - econstructor; eauto.
+  - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x. eauto... admit. admit. admit.
 Admitted.
 
 (* Theorem bidir_elab_weakening : forall Γ1' Γ2' Γ3' e1' e2' d k Γ1 Γ2 Γ3 e1 e2,

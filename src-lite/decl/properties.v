@@ -395,7 +395,7 @@ Qed.
 
 Hint Resolve binds_subst : subst_.
 
-Ltac subst_rewrite := 
+(* Ltac subst_rewrite := 
   match goal with 
   | _ : _ |- (?Γ1,, ⟦ ?v /_ ?x ⟧ ?Γ2, ?x' : [?v /_ ?x] ?A) ⊢ _ _ : _ => replace (Γ1,, ⟦ v /_ x ⟧ Γ2, x' : [v /_ x] A ) with (Γ1,, ⟦ v /_ x ⟧ (Γ2, x' : A) ) by auto
   | _ : _ |- usub _ (open_expr_wrt_expr (subst_expr ?v1 ?x ?B1) (e_var_f ?x0)) _ _ => 
@@ -405,7 +405,7 @@ Ltac subst_rewrite :=
   (* | _ : _ |- usub _ _ (open_expr_wrt_expr (subst_expr ?v1 ?x ?B1) (e_var_f ?x0)) _ => assert (1 = 1) *)
   end.
 
-(* Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
+ Theorem equiv_subst : forall Γ1 Γ2 x A e1 e2 B
   , Γ1 , x : A ,, Γ2 ⊢ e1 <: e2 : B → forall v1 v2
   , Γ1 ⊢ v1 <: v2 : A → Γ1 ⊢ v2 <: v1 : A
   → Γ1 ,, ⟦v1 /_ x⟧ Γ2 ⊢ [v1 /_ x] e1 <: [v2 /_ x] e2 : [v1 /_ x] B

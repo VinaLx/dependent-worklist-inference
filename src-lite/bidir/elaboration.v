@@ -176,6 +176,13 @@ with to_body (b : bbody) : body :=
   end
 .
 
+Fixpoint to_decl_context (Γ : bcontext) : context :=
+  match Γ with
+  | bctx_nil => ctx_nil
+  | bctx_cons Γ' x A => ctx_cons (to_decl_context Γ') x (to_decl A)
+  end
+.
+
 Definition to_bk (k : kind) : bkind :=
   match k with
   | k_star => bk_star

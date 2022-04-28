@@ -39,21 +39,22 @@ Ltac inst_cofinites_by F :=
 Ltac solve_lc_expr := 
   repeat 
     match goal with 
-    | _ : _ |- lc_expr (e_abs ?e1 ?e2) => inst_cofinites_with_new; eapply lc_e_abs_exists; intuition; eauto; econstructor; 
-                                      fold open_expr_wrt_expr_rec; intuition; eauto
-    | _ : _ |- lc_expr (e_pi ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_pi_exists; intuition; eauto
-    | _ : _ |- lc_expr (e_all ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_all_exists; intuition; eauto
-    | _ : _ |- lc_expr (e_bind ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_e_bind_exists; intuition; eauto; econstructor; 
-                                        fold open_expr_wrt_expr_rec; intuition; eauto
+    | _ : _ |- lc_expr (e_abs ?e1 ?e2)  => inst_cofinites_with_new; eapply lc_e_abs_exists; intuition; eauto; econstructor; 
+                                           fold open_expr_wrt_expr_rec; intuition; eauto
+    | _ : _ |- lc_expr (e_pi ?e1 ?e2)   => inst_cofinites_with_new; eapply lc_e_pi_exists; intuition; eauto
+    | _ : _ |- lc_expr (e_all ?e1 ?e2)  => inst_cofinites_with_new; eapply lc_e_all_exists; intuition; eauto
+    | _ : _ |- lc_expr (e_bind ?e1 ?e2) => inst_cofinites_with_new; eapply lc_e_bind_exists; intuition; eauto; econstructor; 
+                                           fold open_expr_wrt_expr_rec; intuition; eauto
     end; auto.
 
 
 Ltac solve_lc_bexpr := 
   repeat 
     match goal with 
-    | _ : _ |- lc_bexpr (be_abs ?e) => inst_cofinites_with_new; eapply lc_be_abs_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_pi ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_pi_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_all ?e1 ?e2) =>  inst_cofinites_with_new; eapply lc_be_all_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (be_bind ?e1) =>  inst_cofinites_with_new; eapply lc_be_bind_exists; intuition; eauto
-    | _ : _ |- lc_bexpr (?e) => econstructor
+    | _ : _ |- lc_bexpr (be_abs ?e1 ?e2)  => inst_cofinites_with_new; eapply lc_be_abs_exists; intuition; eauto;
+                                             econstructor; fold open_expr_wrt_expr_rec; intuition; eauto
+    | _ : _ |- lc_bexpr (be_pi ?e1 ?e2)   => inst_cofinites_with_new; eapply lc_be_pi_exists; intuition; eauto
+    | _ : _ |- lc_bexpr (be_all ?e1 ?e2)  => inst_cofinites_with_new; eapply lc_be_all_exists; intuition; eauto
+    | _ : _ |- lc_bexpr (be_bind ?e1 ?e2) => inst_cofinites_with_new; eapply lc_be_bind_exists; intuition; eauto; econstructor; 
+                                            fold open_expr_wrt_expr_rec; intuition; eauto
     end.

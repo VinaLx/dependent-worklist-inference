@@ -161,3 +161,15 @@ Notation "G ,′' x : A" :=
 Open Scope dworklist_scope.
 Open Scope dwork_scope.
 Open Scope obindd_scope.
+
+
+Scheme bexpr_mut   := Induction for bexpr Sort Prop
+  with bbody_mut   := Induction for bbody Sort Prop.
+
+Scheme lc_bexpr_mut := Induction for lc_bexpr Sort Prop
+  with lc_bbody_mut := Induction for lc_bbody Sort Prop.
+
+Scheme busub_mut   := Induction for busub Sort Prop
+  with bwf_mut     := Induction for wf_bcontext Sort Prop
+  with iapp_mut    := Induction for infer_app Sort Prop
+  with greduce_mut := Induction for greduce Sort Prop.
