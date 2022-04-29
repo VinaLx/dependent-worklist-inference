@@ -1,6 +1,10 @@
 Require Import Program.Tactics.
 Require Export Program.Equality.
+Require Import Metalib.MetatheoryAtom.
 
+Import AtomSetProperties.
+
+Require Import erased.ln_inf.
 Require Export decl.ln_extra.
 Require Import ln_utils.
 
@@ -40,7 +44,46 @@ Proof.
   intros. induction H; auto. 
 Qed.
 
-  
+Hint Resolve monotype_lc : lc.
+
+Ltac rewrite_subst_open_var :=
+  repeat
+    match goal with 
+      | _ : _ |-  context [ ([?e /_ ?x] ?A) ^^ ` ?x' ] => 
+        replace (` x') with ([e /_ x] `x') by (apply subst_expr_fresh_eq; auto)
+    end; repeat rewrite <- subst_expr_open_expr_wrt_expr by auto.
+
+Ltac rewrite_context :=
+  match goal with 
+    | _ : _ |-  context [ ?Γ1,,⟦ ?e /_ ?x ⟧ ?Γ2, ?x' : [?e /_ ?x] ?A ] => 
+     replace ( Γ1,,⟦ e /_ x ⟧ Γ2, x' : [e /_ x] A) with (Γ1,,⟦ e /_ x ⟧ (Γ2, x' : A)) by auto
+  end.
+
+
+Lemma subst_mono : forall e x e',
+    mono_type e -> mono_type e' -> mono_type ([e' /_ x] e).
+Proof with auto with lc.
+  intros.
+  induction H; simpl; eauto; assert (lc_expr e') by now apply monotype_lc.
+  (* var *)
+  - destruct (x0 == x); auto.
+  - econstructor. apply subst_expr_lc_expr; auto...
+  - eapply mono_pi with (L:=L `union` singleton x); eauto. 
+    + intros. rewrite_subst_open_var. auto.
+  - eapply mono_lambda with (L:=L `union` singleton x); eauto.
+    apply subst_expr_lc_expr; eauto...
+    replace (λ_ [e' /_ x] A, [e' /_ x] e : [e' /_ x] B) with ([e' /_ x] (λ_ A, e : B)) by auto.
+    apply subst_expr_lc_expr; eauto...
+    intros. rewrite_subst_open_var. auto.
+  - eapply mono_bind with (L:=L `union` singleton x); eauto.
+    + apply subst_expr_lc_expr; eauto...
+    + replace (Λ [e' /_ x] A, [e' /_ x] e : [e' /_ x] B) with ([e' /_ x] (Λ A, e : B)) by auto.
+      apply subst_expr_lc_expr; eauto...
+    + intros. rewrite_subst_open_var. auto.
+  - eapply mono_castup; auto.
+    apply subst_expr_lc_expr; eauto...
+Qed.
+
 Lemma usub_context_is_wf : forall Γ e1 e2 A,
     Γ ⊢ e1 <: e2 : A -> ⊢ Γ.
 Proof.
@@ -200,6 +243,8 @@ Proof.
   intros. replace (Γ , x : B) with (Γ ,, (ctx_nil, x : B) ,, ctx_nil) by reflexivity.
   now apply weakening.
 Qed.
+
+
 
 Lemma ctx_equiv : forall Γ1 Γ2 x A B,
   ctx_dom (Γ1, x : A,, Γ2) = ctx_dom (Γ1, x : B,, Γ2).
@@ -362,18 +407,33 @@ Qed.
 
 
 Lemma reduction_subst : forall e1 e2 x v,
-  lc_expr v → e1 ⟶ e2 → [v /_ x] e1 ⟶ [v /_ x] e2.
+  mono_type v → e1 ⟶ e2 → [v /_ x] e1 ⟶ [v /_ x] e2.
 Proof.
-  intros. induction H0.
+  intros. induction H0; 
+  assert (lc_expr v) by now apply monotype_lc.
   - simpl. constructor. apply subst_expr_lc_expr; auto. auto.
   - simpl. replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2)).
-    + constructor. apply subst_expr_lc_expr; auto. admit. admit. apply subst_expr_lc_expr; auto.
+    + constructor. apply subst_expr_lc_expr; auto.
+      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+      apply subst_expr_lc_expr; auto.
     + apply eq_sym. apply subst_expr_open_expr_wrt_expr. auto.
-  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_inst;  admit. admit.
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_inst.
+    + apply subst_expr_lc_expr; auto.
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+    + apply subst_expr_lc_expr; auto.
+    + apply subst_mono; auto. 
+    + rewrite subst_expr_open_expr_wrt_expr by auto. auto.
   - simpl. eauto.
-  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_cast_inst; admit. admit.
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_cast_inst. 
+    + apply subst_expr_lc_expr; auto.
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
+    + apply subst_mono; auto. 
+    + rewrite subst_expr_open_expr_wrt_expr by auto. auto.
   - simpl. constructor; apply subst_expr_lc_expr; auto.
-Admitted.
+Qed.
 
 
 Lemma binds_subst : forall Γ1 Γ2 x x' A B e,
@@ -468,8 +528,8 @@ Proof.
   - pose proof H4 as H5.
     pick fresh x; specialize (H5 x Fr);
       apply usub_context_is_wf in H5; inversion H5; subst; eauto.
-  (* app, need equiv apply *)
-  - eapply s_sub with (e_all A2 B2) k_star.
+
+      - eapply s_sub with (e_all A2 B2) k_star.
     + pick fresh x and apply s_bind; eauto using narrowing_cons.
     + pick fresh x and apply s_forall; eauto using narrowing_cons.
   - pick fresh x and apply s_forall; eauto using narrowing_cons.
@@ -553,13 +613,130 @@ Proof.
     apply (IHusub1 _ _ (eq_refl _) (eq_refl _) H0). 
 Qed.
 
+Ltac substitution_strategy :=
+  match goal with
+  | |- _ ⊢ e_app _ _ <: e_app _ _ : [_ /_ _] _ ^^ _ =>
+    (* [v / x] A ^^ e = [v / x] A ^^ [v / x] e *)
+    rewrite <- open_subst_eq
+  | |- _ ⊢ ([?v /_ ?x] ?e1) ^^ _ <: _ : _ =>
+    rewrite -> open_subst_eq
+  end
+.
+
+Lemma erase_subst_exchange : forall e1 x e2, 
+  erase ([e2 /_ x] e1) = subst_eexpr (erase e2) x (erase e1).
+Proof.
+  
+  intro e1. pattern e1.
+  eapply expr_ind_mut with 
+    ( P0 := fun b => 
+      match b with 
+      | b_anno e A => forall x e2, erase ([e2 /_ x] e) = subst_eexpr (erase e2) x (erase e)
+      end
+    );
+    intros; try (simpl; eauto; fail).
+  - simpl. unfold eq_dec. destruct (EqDec_eq_of_X x x0); auto.
+  - simpl. destruct k; auto.
+  - simpl in *. rewrite H. rewrite H0. auto. 
+  - simpl in *. destruct b. simpl. rewrite H0. auto.  
+  - simpl in *. rewrite H. rewrite H0. auto. 
+  - simpl in *. destruct b. simpl. rewrite H0. auto.
+  - simpl in *. rewrite H. rewrite H0. auto. 
+  - simpl in *. rewrite H0. auto. 
+  - simpl in *. rewrite H. auto.
+Qed.
+
+Lemma ctx_dom_subst_equal : forall Γ x v,
+  ctx_dom (⟦v /_ x⟧ Γ) = ctx_dom Γ.
+Proof.
+  induction Γ; intros.
+  + reflexivity.
+  + simpl. now rewrite (IHΓ x0 v).
+Qed.
+
+Lemma app_ctx_union_ctx_dim : forall Γ2 Γ1,
+    ctx_dom (Γ1,,Γ2) [=] ctx_dom Γ1 `union` ctx_dom Γ2.
+Proof.
+  induction Γ2; simpl; intros.
+  - intro. split; intros.
+    + apply empty_union_2; auto. intro. auto.
+    + now apply empty_union_2 in H.
+  - split; intros.
+    + apply union_sym. apply union_add.
+      rewrite union_sym. rewrite <- IHΓ2. auto.
+    + apply union_sym in H. apply union_add in H.
+      rewrite union_sym in H.  rewrite IHΓ2. auto.
+Qed.
+
+Lemma dom_insert_subset : forall Γ2 Γ1 x A,
+    union (ctx_dom Γ2) (ctx_dom Γ1) [<=] ctx_dom (Γ1 , x : A ,, Γ2).
+Proof.
+  induction Γ2; simpl; intros.
+  - apply subset_add_2. intro. intros.
+    now apply empty_union_1 in H.
+  - intro. intros.
+    apply union_add in H.
+    assert (add x (union (ctx_dom Γ2) (ctx_dom Γ1)) [<=] add x (ctx_dom (Γ1 , x0 : A0 ,, Γ2))).
+    + apply subset_add_3. auto.
+      apply subset_add_2. apply IHΓ2.
+    + now apply H0.
+Qed.
+
+
 
 Theorem substitution : forall Γ1 Γ2 x A B e1 e2 e3,
   Γ1 , x : B ,, Γ2 ⊢ e1 <: e2 : A ->
   Γ1 ⊢ e3 : B -> mono_type e3 ->
   Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
 Proof.
-Admitted.
+  intros until e3. intros Hsub Hsub3 Hmono.
+  remember (Γ1 , x : B ,, Γ2 ) as Γ.
+  generalize dependent HeqΓ.
+  generalize x Γ2. clear x Γ2.
+  apply usub_mut with
+    (P := fun Γ e1 e2 A => fun (_ : Γ ⊢ e1 <: e2 : A) =>
+        forall x Γ2, Γ = Γ1, x : B,, Γ2 ->
+        Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A)
+    (P0 := fun Γ => fun (_ : ⊢ Γ) =>
+        forall x Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 ,, ⟦ e3 /_ x ⟧ Γ2);
+    simpl; intros; subst; auto; assert (lc_expr e3) by now apply monotype_lc.
+   - destruct (x==x0); subst.
+     + assert (A0=B) by (eapply binds_type_equal; eauto). subst.
+       rewrite subst_expr_fresh_eq. replace (Γ1,, ⟦ e3 /_ x0 ⟧ Γ2) with (Γ1,, ⟦ e3 /_ x0 ⟧ Γ2,,ctx_nil) by auto.
+       eapply weakening; eauto. eapply fresh_binded; eauto.
+     + apply s_var; auto. eapply binds_subst; eauto. 
+   - eauto.
+   - eapply s_abs with (L:=L `union` singleton x); eauto;
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - eapply s_pi with (L:=L `union` singleton x); eauto;
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - rewrite subst_expr_open_expr_wrt_expr; auto. econstructor; eauto.
+     eapply subst_mono; eauto.
+   - eapply s_bind with (L:=L `union` singleton x `union` fv_eexpr (erase e3)); eauto;
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto...
+     rewrite erase_subst_exchange. rewrite fv_eexpr_subst_eexpr_upper. auto.
+     rewrite erase_subst_exchange. rewrite fv_eexpr_subst_eexpr_upper. auto.
+   - econstructor; eauto; eapply reduction_subst; eauto;
+     eapply usub_all_lc with (e1:=e3) (e2:=e3) (A:=B); eauto.
+   - econstructor; eauto 3; eapply reduction_subst; eauto;
+     eapply usub_all_lc with (e1:=e3) (e2:=e3) (A:=B); eauto.
+   - eapply s_forall_l with (L:=L `union` singleton x) (t:=[e3 /_ x] t); eauto;
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto.
+     now apply subst_mono.
+   - eapply s_forall_r with (L:=L `union` singleton x); eauto.
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - eapply s_forall with (L:=L `union` singleton x); eauto.
+     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - eauto.
+   
+   - destruct Γ2; inversion H.
+   - destruct Γ2; dependent destruction H1.
+     + auto.
+     + simpl. econstructor; eauto.
+       rewrite app_ctx_union_ctx_dim. rewrite ctx_dom_subst_equal.
+       rewrite union_sym. rewrite dom_insert_subset. eapply n.
+Qed.
+
 
 Corollary substitution_cons : forall Γ x A B e1 e2 e3,
     Γ, x : B ⊢ e1 <: e2 : A ->
@@ -625,7 +802,7 @@ Proof.
       eapply kind_sub_inversion_l in Hk2; intuition; eauto.
 Qed.
 
-Lemma type_correctness_forall : forall Γ e1 e2 A B,
+Lemma type_correctness_eall : forall Γ e1 e2 A B,
   Γ ⊢ e1 <: e2 : e_all A B -> Γ ⊢ e_all A B : ⋆.
 Proof.
   intros.
@@ -638,7 +815,7 @@ Proof.
       apply box_never_welltype in Hcontra. contradiction.
 Qed.
 
-Lemma type_correctness_forall_param : forall Γ e A B,
+Lemma type_correctness_eall_param : forall Γ e A B,
   Γ ⊢ e_all A B : ⋆ -> Γ ⊢ e : A -> exists k, Γ ⊢ A : e_kind k. 
 Proof.
   intros.
