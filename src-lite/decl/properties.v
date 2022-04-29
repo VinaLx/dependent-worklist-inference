@@ -573,7 +573,7 @@ Proof.
   eapply substitution; eauto.
 Qed.
 
-Lemma eall_open_mono : forall Γ x A B t k,
+Lemma eall_open_mono_helper : forall Γ x A B t k,
   Γ, x : A ⊢ B ^^ ` x : ⧼ k ⧽ -> x `notin` fv_expr B -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⧼ k ⧽.
 Proof.
   intros.
@@ -582,6 +582,16 @@ Proof.
   apply monotype_lc in H2.
   specialize (open_subst_eq _ _ _ H0 H2). intros.
   rewrite <- H4 in H3. destruct k; auto.
+Qed.
+
+Lemma eall_open_mono : forall Γ A B t,
+  Γ ⊢ e_all A B : ⋆ -> Γ ⊢ t : A -> mono_type t -> Γ ⊢ B ^^ t : ⋆.
+Proof.
+  intros.
+  specialize (eall_open_var _ _ _ H).
+  intros. destruct H2 as [L].
+  inst_cofinites_by (L `union` fv_expr B).
+  eapply eall_open_mono_helper with (x:=x) (A:=A); eauto.
 Qed.
 
 Lemma ctx_type_correct : forall Γ x A,
@@ -610,7 +620,7 @@ Proof.
   - destruct k2; eauto with tc. 
   - destruct IHHsub2 as [Hk | [k Hk]]. 
     inversion Hk. dependent induction Hk.
-    + inst_cofinites_by (L `union` fv_expr B). right. exists k. eapply eall_open_mono; eauto.
+    + inst_cofinites_by (L `union` fv_expr B). right. exists k. eapply eall_open_mono_helper; eauto.
     + eapply IHHk1; eauto.
       eapply kind_sub_inversion_l in Hk2; intuition; eauto.
 Qed.
@@ -626,4 +636,14 @@ Proof.
     + auto.
     + dependent destruction H0. apply refl_r in H0_0 as Hcontra.
       apply box_never_welltype in Hcontra. contradiction.
+Qed.
+
+Lemma type_correctness_forall_param : forall Γ e A B,
+  Γ ⊢ e_all A B : ⋆ -> Γ ⊢ e : A -> exists k, Γ ⊢ A : e_kind k. 
+Proof.
+  intros.
+  specialize (type_correctness _ _ _ _ H0); intros.
+  destruct H1.
+  - rewrite H1 in H. apply not_eall_box in H. contradiction.
+  - destruct H1 as [k1]. exists k1. eauto. 
 Qed.
