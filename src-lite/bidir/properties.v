@@ -244,13 +244,6 @@ Proof with autorewrite with bctx; eauto.
   - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x. eauto... admit. admit. admit.
 Admitted.
 
-(* Theorem bidir_elab_weakening : forall Γ1' Γ2' Γ3' e1' e2' d k Γ1 Γ2 Γ3 e1 e2,
-  busub_elab (Γ1',,'         Γ3') e1' e2' d ⧼k⧽' (Γ1,,      Γ3) e1 e2 ⧼(to_k k)⧽ ->
-  wf_context_elab (Γ1',,'Γ2',,'Γ3') (Γ1,,Γ2,,Γ3) ->
-  busub_elab (Γ1',,'  Γ2',,' Γ3') e1' e2' d ⧼k⧽' (Γ1,, Γ2,, Γ3) e1 e2 ⧼(to_k k)⧽.
-Proof.
-  intros.
-Admitted. *)
 
 Lemma bctx_dom_narrowing_eq : forall Γ1 Γ2 x A B,
   bctx_dom (Γ1,' x : A,,' Γ2) = bctx_dom (Γ1,' x : B,,' Γ2).
@@ -279,6 +272,7 @@ Scheme  busub_narrowing_mut       := Induction for busub       Sort Prop
   with  wf_bcontext_narrowing_mut := Induction for wf_bcontext Sort Prop
   with  greduce_narrowing_mut     := Induction for greduce     Sort Prop
   with  infer_app_narrowing_mut   := Induction for infer_app   Sort Prop.
+
 
 (* Theorem bidir_narrowing : forall Γ1 x B Γ2 e1 e2 d C,
   busub (Γ1,' x : B,,' Γ2) e1 e2 d C -> 
@@ -350,10 +344,3 @@ Admitted.
 
 
 Hint Resolve bidir_narrowing : bidir. *)
-
-(* Theorem bidir_elab_narrowing : forall Γ1' x B' Γ2' e1' e2' d C' Γ1 B Γ2 e1 e2 C,
-  busub_elab (Γ1',' x : B',,' Γ2') e1' e2' d C' (Γ1, x : B,, Γ2) e1 e2 C ->
-  forall A A' k, Γ1' ⊢ A' <: B' ⇒ ⧼ k ⧽' ->
-  busub_elab (Γ1',' x : A',,' Γ2') e1' e2' d C' (Γ1, x : A,, Γ2) e1 e2 C.
-Proof.
-Admitted. *)

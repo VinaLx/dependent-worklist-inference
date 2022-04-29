@@ -383,7 +383,54 @@ Proof.
 Qed.
 
 
-Theorem bidir_sound' : forall Γ e1 e2 d A,
+Lemma to_decl_context_keeps_lc_context : forall Γ,
+  lc_bcontext Γ -> lc_context (to_decl_context Γ).
+Proof.
+  intros. 
+  induction Γ; auto.
+  - dependent destruction H. simpl. constructor. auto.
+    now apply to_decl_keeps_lc.
+Qed.
+
+
+Lemma to_decl_in_context : forall Γ x A ,
+  in_bctx x A Γ -> x :_ (to_decl A) ∈ (to_decl_context Γ). 
+Proof.
+  intros.
+  dependent induction H.
+  - simpl. apply in_here; auto. 
+    + now apply to_decl_context_keeps_lc_context.
+    + now apply to_decl_keeps_lc.
+  - econstructor. now apply to_decl_keeps_lc. auto.
+Qed.
+
+
+Lemma to_decl_context_ctx_dom_equiv : forall Γ,
+  bctx_dom Γ = ctx_dom (to_decl_context Γ).
+Proof.
+  induction Γ; auto.
+  simpl. rewrite IHΓ. auto.
+Qed.
+
+Theorem to_decl_keeps_notin_fv_expr : forall e x,
+  x `notin` ott.fv_eexpr (berase e) -> x `notin` ott.fv_eexpr (erase (to_decl e)).
+Proof.
+  intros e x. pattern e.
+  eapply bexpr_mut with
+  (P0 := fun b => 
+      match b with 
+      | bb_anno e A =>
+          x `notin` ott.fv_eexpr (berase e) ->
+          x `notin` ott.fv_eexpr (erase (to_decl e))
+      end
+    ); intros; try (simpl in *; auto; fail).
+  - destruct k; auto.
+  - destruct b. simpl in *. auto. 
+  - destruct b. simpl in *. auto.
+Qed.
+
+
+Theorem bidir_sound : forall Γ e1 e2 d A,
   busub Γ e1 e2 d A -> to_decl_context Γ ⊢ to_decl e1 <: to_decl e2 : to_decl A.
 Proof.
   intros.
@@ -402,10 +449,11 @@ Proof.
       end
     )
     ( P2 := fun Γ A B (pf : Γ ⊢ A ⟼ B) =>
-      True ); 
+      to_decl_context Γ ⊢ to_decl A : ⋆ -> to_decl A ⟶ to_decl B \/ 
+      exists C, to_decl_context Γ ⊢ to_decl A <: to_decl C : ⋆ /\ to_decl C ⟶ to_decl B
+    ); 
     intros; try (constructor; auto; fail).
-  - constructor; auto.
-    admit.
+  - constructor; auto. now eapply to_decl_in_context.
   - simpl. eauto.
   - simpl in *. eapply ott.s_abs with (L:=L); eauto;
     intros; inst_cofinites_with x; repeat rewrite <- to_decl_open_expr_wrt_var_distr; eauto. 
@@ -414,22 +462,26 @@ Proof.
   - simpl in *. eapply ott.s_pi with (L:=L); eauto;
     intros; inst_cofinites_with x; repeat rewrite <- to_decl_open_expr_wrt_var_distr; eauto.
   - simpl in *. dependent destruction i.
-    + rewrite to_decl_open_expr_wrt_expr_distr. econstructor. 
-      now apply to_decl_keeps_mono. eauto.  replace (e_pi (to_decl B) (to_decl C)) with (to_decl (be_pi B C)) by auto.
-      auto.
-    + admit.
+    + rewrite to_decl_open_expr_wrt_expr_distr. 
+      eapply ott.s_app with (A:=to_decl B); eauto. now apply to_decl_keeps_mono. 
+    + simpl in H0. specialize (type_correctness_forall _ _ _ _ _ H0). intros. specialize (H3 H5).
+      rewrite to_decl_open_expr_wrt_expr_distr. 
+      eapply ott.s_app with (A:=to_decl B); eauto. now apply to_decl_keeps_mono.
   - simpl in *. eapply ott.s_bind with (L:=L); eauto; 
     intros; repeat rewrite <- to_decl_open_expr_wrt_var_distr; eauto. 
     + eapply narrowing_cons; eauto.
     + eapply narrowing_cons; eauto.
-    + admit.
-    + admit.
+    + eapply to_decl_keeps_notin_fv_expr; eauto. 
+    + eapply to_decl_keeps_notin_fv_expr; eauto. 
   - simpl in *. econstructor; eauto; eapply to_decl_keeps_reduce; eauto. 
-   - simpl in *. 
+  - simpl in *. 
     dependent destruction g.
     + econstructor. eauto. eapply to_decl_keeps_reduce; eauto. eauto.
-    + admit. 
-    
+    + simpl in H4. specialize (type_correctness_forall _ _ _ _ _ H4). intros.
+      * destruct (H3 H5). 
+        -- eapply ott.s_castdn with (A:=to_decl (be_all A0 B)); eauto.
+        -- destruct H6 as [D [Hsub Hred]].
+        eapply ott.s_castdn with (A:=to_decl D); eauto.
   - simpl in *. assert (mono_type (to_decl t)) by now apply to_decl_keeps_mono. eapply ott.s_forall_l with (L:=L); eauto.
     + rewrite <- to_decl_open_expr_wrt_expr_distr. auto.
     + intros. inst_cofinites_with x. rewrite <- to_decl_open_expr_wrt_var_distr. auto.
@@ -440,87 +492,56 @@ Proof.
   - simpl in *; auto.
   - eapply ott.s_sub with (A:=to_decl A0); eauto.
 
-  - admit.
-
-  - admit.
-Admitted.
-
-(* Theorem bidir_sound : forall Γ' e1' e2' d A' Γ e1 e2 A,
-  busub_elab Γ' e1' e2' d A' Γ e1 e2 A → Γ ⊢ e1 <: e2 : A.
-Proof.
-  intros.
-  pattern Γ', e1', e2', d, A', Γ, e1, e2, A, H.
-  eapply busub_elab_mut with
-    (P0 := fun Γ' Γ (_ : wf_bcontext_elab Γ' Γ) => ⊢ Γ )
-    (P1 := fun Γ' A' F' Γ A F  (_ : infer_app_elab Γ' A' F' Γ A F) =>
-      match F with 
-      | dfun_pi B C => 
-        match A with 
-        | e_pi _ _ => True
-        | e_all _ _ => Γ ⊢ A : ⋆ -> Γ ⊢ A <: e_pi B C : ⋆
-        | _ => False
-        end  
-      end
-    )
-    (P2 := fun Γ' A' B' (_ : greduce_elab Γ' A' B') =>
-      breduce A' B'                                
-    );
-    intros; try (constructor; auto; fail).
-  - eauto.
-  - eauto.
-  - eauto.
-  - dependent destruction i.
-    + econstructor.
-      eapply busub_elab_keeps_mono; eauto. eauto. auto.
-    + specialize (type_correctness Γ0 e0 e3 (e_all A0 B0) H0). intros.
-      inversion H5. inversion H6. destruct H6 as [k]. destruct k.
-      * specialize (H3 H6). econstructor. eapply busub_elab_keeps_mono; eauto. eauto. eapply ott.s_sub; eauto.
-      * dependent destruction H6. apply refl_r in H6_0. eapply box_never_welltype in H6_0. contradiction.
-  - econstructor; eauto.
-    + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase with (e1:=e0 ^^ `x) (e2:=e3 ^^ `x); eauto.
-    + intros. inst_cofinites_with x. eapply busub_elab_keeps_notin_fv_erase; eauto.
-  - econstructor; eauto.
-    + admit. (* reduce *)
-    + admit. (* reduce *)
-  - eapply ott.s_castdn with (A:=A0).
-    + eauto.
-    + admit. (* reduce *)
-    + eauto.
-  - eapply ott.s_forall_l with (t:=t); eauto.
-    + eapply busub_elab_keeps_mono; eauto.
-  - eauto.
-  - eapply ott.s_forall; eauto.
-  - auto.
-  - eapply ott.s_sub; eauto.
- 
   (* P0 *)
-  - econstructor; eauto.
-    + rewrite <- (wf_bcontext_elab_same_dom Γ'0 Γ0); auto. 
+  - simpl. econstructor; eauto. now rewrite <- to_decl_context_ctx_dom_equiv.
 
   (* P1 *)
-  -  assert (mono_type t) as Hmonot. { eapply busub_elab_keeps_mono with (e1':=t'); eauto. }
-     dependent destruction F. dependent destruction i.
-    + intros. rewrite x.
-      specialize (eall_open_var _ _ _ H2). intros. destruct H3 as [L].
-      eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
-      * subst. eapply not_eall_box in H2. contradiction. 
-      * destruct HwkA as [k HwkA]. eapply ott.s_forall_l with (t:=t); eauto.
-        inst_cofinites_by (L `union` fv_expr B). eapply eall_open_mono; eauto.
-    + intros. rewrite <- x in H3.
-      specialize (eall_open_var _ _ _ H4). intros HBx. 
-      destruct HBx as [L]. inst_cofinites_by (L `union` fv_expr B `union` ctx_dom Γ0).
-      eapply type_correctness in H0 as HtcA. destruct HtcA as [HboxA | HwkA].
-      * subst. eapply not_eall_box in H4. contradiction.
-      * destruct HwkA as [k HwkA].
-        eapply ott.s_forall_l with (L:=L `union` ctx_dom Γ0 `union` singleton x1); eauto.
-        -- rewrite x in H3. apply H3. eapply eall_open_mono with (x:=x1) (A:=A0); eauto.
-        -- intros. apply usub_context_is_wf in HwkA as Hwf. eapply eall_open_mono with (x:=x1) (A:=A0); auto.
-           ++ replace (Γ0, x2 : A0, x1 : A0) with (Γ0,,(ctx_nil, x2 : A0),,(ctx_nil, x1 : A0)) by auto.
-              apply weakening; simpl; eauto. eapply ott.wf_cons with (k:=k); eauto. 
-              apply weakening_cons; eauto.
-           ++ econstructor; eauto. eapply in_here; eapply usub_all_lc; eauto.  
+  - dependent destruction F. dependent destruction i; intros.
+    + rewrite <- x in H4. simpl in *.
+      specialize (type_correctness _ _ _ _ H0). intros. 
+      destruct H6. 
+      * rewrite H6 in H5. apply not_eall_box in H5. contradiction.
+      * specialize (eall_open_var _ _ _  H5). intros. 
+        destruct H6 as [k]. destruct H7 as [L].
+        eapply ott.s_forall_l with (L:=L) (t:=to_decl t); eauto.
+        -- now apply to_decl_keeps_mono.
+        -- replace (e_pi (to_decl A1) (to_decl B0)) with (to_decl (be_pi A1 B0 )) by auto.
+           rewrite x. rewrite to_decl_open_expr_wrt_expr_distr. 
+           inst_cofinites_by (L `union` fv_expr (to_decl B)).
+           eapply eall_open_mono; eauto. now apply to_decl_keeps_mono.
+    + rewrite <- x in H3. rewrite x in H3. simpl in *.
+      specialize (type_correctness _ _ _ _ H0). intros. destruct H5. 
+      * rewrite H5 in H4. apply not_eall_box in H4. contradiction.
+      * specialize (eall_open_var _ _ _ H4). intros.
+        destruct H5 as [k].  destruct H6 as [L].
+        assert (to_decl_context G ⊢ to_decl (B ^^' t) : ⧼ k_star ⧽). {
+          inst_cofinites_by (L `union` fv_expr (to_decl B)).
+          rewrite to_decl_open_expr_wrt_expr_distr.
+          eapply eall_open_mono; eauto. now apply to_decl_keeps_mono.
+        }
+        specialize (H3 H7). rewrite to_decl_open_expr_wrt_expr_distr in H3.
+        simpl. eapply ott.s_forall_l with (L:=L `union` fv_expr (to_decl B)) (t:=to_decl t); eauto.
+        now apply to_decl_keeps_mono.
 
   (* P2 *)
-  - admit. (* breduce *) 
-  - admit. (* breduce *) 
-Admitted. *)
+  - left. eapply to_decl_keeps_reduce. auto.
+  - right. destruct H1.
+    + rewrite to_decl_open_expr_wrt_expr_distr.
+      simpl in H2. specialize (eall_open_var _ _ _ H2). intros.
+      destruct H1 as [L]. inst_cofinites_by (L `union` fv_expr (to_decl B)).
+      eapply eall_open_mono; auto. exact H1. auto. now apply to_decl_keeps_mono.
+    + exists (B ^^' t). split; auto.
+      simpl in *. specialize (eall_open_var _ _ _ H2). intros.
+      specialize (type_correctness _ _ _ _ H0). intros. destruct H4.
+      * rewrite H4 in H2. apply not_eall_box in H2. contradiction.
+      * destruct H4 as [k]. destruct H3 as [L]. eapply ott.s_forall_l with (t:=to_decl t); eauto. now apply to_decl_keeps_mono.
+      rewrite to_decl_open_expr_wrt_expr_distr. 
+      inst_cofinites_by (L `union` fv_expr (to_decl B)).
+      eapply eall_open_mono with (x:=x); eauto. now apply to_decl_keeps_mono.
+    + destruct H1 as [D [Hsub Hred]]. exists D. split; auto. simpl in *. rewrite to_decl_open_expr_wrt_expr_distr in Hsub.
+      specialize (type_correctness _ _ _ _ H0). intros. destruct H1.
+      * rewrite H1 in H2. apply not_eall_box in H2. contradiction. 
+      * destruct H1 as [k]. specialize (eall_open_var _ _ _ H2). intros.
+        destruct H3 as [L].
+        simpl; eapply ott.s_forall_l with (t:=to_decl t); eauto. now apply to_decl_keeps_mono.
+Qed.

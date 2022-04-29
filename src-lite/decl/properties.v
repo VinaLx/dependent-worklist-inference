@@ -614,3 +614,16 @@ Proof.
     + eapply IHHk1; eauto.
       eapply kind_sub_inversion_l in Hk2; intuition; eauto.
 Qed.
+
+Lemma type_correctness_forall : forall Γ e1 e2 A B,
+  Γ ⊢ e1 <: e2 : e_all A B -> Γ ⊢ e_all A B : ⋆.
+Proof.
+  intros.
+  specialize (type_correctness _ _ _ _ H); intros.
+  destruct H0.
+  - inversion H0.
+  - destruct H0 as [k]. destruct k.
+    + auto.
+    + dependent destruction H0. apply refl_r in H0_0 as Hcontra.
+      apply box_never_welltype in Hcontra. contradiction.
+Qed.
