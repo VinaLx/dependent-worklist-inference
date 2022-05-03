@@ -100,30 +100,27 @@ where "wl ⟿ dwl" := (transfer wl dwl)
 Hint Constructors transfer : core.
  *)
 
+(* 'ss' is short for 'substitution set' *)
 Inductive ss_entry :=
-| sse_v (A : bexpr)
-| sse_ex (A : bexpr) (e : bexpr)
+| sse_ex (e : bexpr)
 | sse_kv (k : bkind)
 .
 
 Inductive lc_sse : ss_entry → Prop :=
-| lc_sse_v : forall A, lc_bexpr A → lc_sse (sse_v A)
-| lc_sse_ex : forall A e, lc_bexpr A → lc_bexpr e → lc_sse (sse_ex A e)
+| lc_sse_ex : forall e, lc_bexpr e → lc_sse (sse_ex e)
 | lc_sse_kv : forall k, lc_sse (sse_kv k)
 .
 
 Definition fv_sse (e : ss_entry) : atoms :=
   match e with
-  | sse_v A => fv_bexpr A
-  | sse_ex A e => fv_bexpr A `union` fv_bexpr e
+  | sse_ex e => fv_bexpr e
   | sse_kv k => {}
   end
 .
 
 Definition subst_sse (v : bexpr) (x : var) (sse : ss_entry) :=
   match sse with
-  | sse_v A => sse_v ([v /' x] A)
-  | sse_ex A e => sse_ex ([v /' x] A) ([v /' x] e)
+  | sse_ex e => sse_ex ([v /' x] e)
   | sse_kv k => sse_kv k
   end
 .
@@ -132,11 +129,13 @@ Hint Constructors lc_sse : core.
 
 Definition subst_set := list (var * ss_entry).
 
+(*
 Notation ": A !" :=
   (sse_v A) (at level 52, A at level 50, no associativity).
+*)
 
-Notation ": A ≔ e" :=
-  (sse_ex A e) (at level 52, A at level 50, no associativity).
+Notation " ≔ e" :=
+  (sse_ex e) (at level 52, no associativity).
 Notation " ≔ ⧼ k ⧽" :=
   (sse_kv k) (at level 52, no associativity).
 
@@ -155,43 +154,8 @@ Notation "x e ∈ s" := (binds x e s)
 
 Open Scope subst_set_scope.
 
-
-Inductive inst_val : Type :=
-| iv_e : bexpr → inst_val
-| iv_k : bkind → inst_val
-.
-
-Fixpoint inst_set (ss : subst_set) : list (atom * inst_val) :=
-  match ss with
-  | nil => nil
-  | s' ; x : A ! => inst_set s'
-  | s' ; x : A ≔ e => (x, iv_e e) :: inst_set s'
-  | s' ; x ≔ ⧼k⧽ => (x, iv_k k) :: inst_set s'
-  end
-.
-
-Definition fv_inst_val (v : inst_val) :=
-  match v with
-  | iv_e e => fv_bexpr e
-  | iv_k k => {}
-  end
-.
-
-
-Fixpoint fv_inst_set (s : list (atom * inst_val)) :=
-  match s with
-  | nil => {}
-  | pair x a :: s' => fv_inst_val a `union` fv_inst_set s'
-  end
-.
-
 Definition subst_ss (v : bexpr) (x : var) : subst_set → subst_set :=
   map (subst_sse v x).
-
-Definition fv_ss_inst (s : subst_set) : atoms :=
-  fv_inst_set (inst_set s).
-
-Hint Unfold fv_ss_inst : core.
 
 Fixpoint fv_ss (s : subst_set) : atoms :=
   match s with
@@ -200,7 +164,7 @@ Fixpoint fv_ss (s : subst_set) : atoms :=
   end
 .
 
-(* 'ss' is short for 'substitution set' *)
+(*
 Fixpoint ss_to_ctx (s : subst_set) : bcontext :=
   match s with
   | nil => bctx_nil
@@ -209,20 +173,18 @@ Fixpoint ss_to_ctx (s : subst_set) : bcontext :=
   | s' ; x ≔ ⧼k⧽ => ss_to_ctx s'
   end
 .
+*)
 
 (* syntactic well-formedness of substitution set *)
 Inductive wf_ss : subst_set → Prop :=
 | wf_ss_nil : wf_ss nil
-| wf_ss_v  : forall x A Θ
-  , wf_ss Θ → x `notin` dom Θ → lc_bexpr A
-  → wf_ss (Θ; x : A !)
 | wf_ss_kv : forall x k Θ
   , wf_ss Θ → x `notin` dom Θ
   → wf_ss (Θ; x ≔ ⧼k⧽)
-| wf_ss_ex : forall x A e Θ
+| wf_ss_ex : forall x e Θ
   , wf_ss Θ → x `notin` dom Θ
-  → lc_bexpr A → mono_btype e
-  → wf_ss (Θ; x : A ≔ e)
+  → mono_btype e
+  → wf_ss (Θ; x ≔ e)
 .
 
 #[export]
@@ -251,26 +213,33 @@ Qed.
 Reserved Notation "T ⊩ e1 ⇝ e2" (at level 65, e1 at level 58, no associativity).
 Inductive inst_expr : subst_set → aexpr → bexpr → Prop :=
 | inste_var : forall Θ x,     wf_ss Θ → inst_expr Θ `′x `'x
-| inste_ex  : forall Θ x A e, wf_ss Θ → x : A ≔ e ∈ Θ → inst_expr Θ  `^x  e
+| inste_ex  : forall Θ x e, wf_ss Θ → x ≔ e ∈ Θ → inst_expr Θ  `^x  e
 | inste_k   : forall Θ x k,   wf_ss Θ → x ≔ ⧼k⧽ ∈ Θ → inst_expr Θ ⧼`^x⧽ ⧼k⧽'
 | inste_star: forall Θ, wf_ss Θ → inst_expr Θ ⋆′ ⋆'
 | inste_box : forall Θ, wf_ss Θ → inst_expr Θ ◻′ ◻'
 | inste_num : forall Θ n,     wf_ss Θ → inst_expr Θ (ae_num n) (be_num n)
 | inste_int : forall Θ, wf_ss Θ → inst_expr Θ ae_int be_int
-| inste_bot : forall Θ, wf_ss Θ → inst_expr Θ ae_bot be_bot
+| inste_bot : forall Θ A' A
+  , inst_expr Θ A' A
+  → inst_expr Θ (ae_bot A') (be_bot A)
 | inste_app : forall Θ f' f a' a
   , inst_expr Θ f' f → inst_expr Θ a' a
   → inst_expr Θ (ae_app f' a') (be_app f a)
-| inste_castup : forall Θ e' e
-  , inst_expr Θ e' e → inst_expr Θ (ae_castup e') (be_castup e)
+| inste_castup : forall Θ e' e A' A
+  , inst_expr Θ e' e → inst_expr Θ A' A
+  → inst_expr Θ (ae_castup A' e') (be_castup A e)
 | inste_castdn : forall Θ e' e,
     inst_expr Θ e' e → inst_expr Θ (ae_castdn e') (be_castdn e)
-| inste_abs : forall L Θ e' e
+| inste_abs : forall L Θ e' e b' b
   , (forall x, x `notin` L → inst_expr Θ (e' ^`′ x) (e ^`' x))
-  → inst_expr Θ (ae_abs e') (be_abs e)
-| inste_bind : forall L Θ e' e
+  → (forall x, x `notin` L → inst_body Θ
+      (open_abody_wrt_aexpr b' `′x) (open_bbody_wrt_bexpr b `' x))
+  → inst_expr Θ (ae_abs e' b') (be_abs e b)
+| inste_bind : forall L Θ e' e b' b
   , (forall x, x `notin` L → inst_expr Θ (e' ^`′ x) (e ^`' x))
-  → inst_expr Θ (ae_bind e') (be_bind e)
+  → (forall x, x `notin` L → inst_body Θ
+      (open_abody_wrt_aexpr b' `′x) (open_bbody_wrt_bexpr b `' x))
+  → inst_expr Θ (ae_bind e' b') (be_bind e b)
 | inste_pi : forall L Θ A' A B' B
   , inst_expr Θ A' A
   → (forall x, x `notin` L → inst_expr Θ (B' ^`′ x) (B ^`' x))
@@ -281,7 +250,11 @@ Inductive inst_expr : subst_set → aexpr → bexpr → Prop :=
   → inst_expr Θ (ae_all A' B') (be_all A B)
 | inste_anno : forall Θ e' e A' A
   , inst_expr Θ e' e → inst_expr Θ A' A
-  → inst_expr Θ (e' ::′ A') (e ::' A)
+    → inst_expr Θ (e' ::′ A') (e ::' A)
+with inst_body : subst_set → abody → bbody → Prop :=
+| instb_anno : forall Θ e' e A' A
+  , inst_expr Θ e' e → inst_expr Θ A' A
+  → inst_body Θ (ab_anno e' A') (bb_anno e A)
 where "T ⊩ e1 ⇝ e2" := (inst_expr T e1 e2) : type_scope
 .
 
@@ -305,8 +278,9 @@ Lemma inst_ae_lc : forall Θ e' e,
   Θ ⊩ e' ⇝ e → lc_aexpr e'.
 Proof.
   induction 1;
-    solve [auto | pick fresh x; eauto 6 with lc].
-Qed.
+    try solve [auto | pick fresh x; eauto 6 with lc].
+  (* body cases *)
+Admitted.
 
 
 Lemma inst_e_lc : forall Θ e' e,
@@ -316,7 +290,10 @@ Proof.
   - apply wf_lc_sse in H0.
     + now inversion H0.
     + assumption.
-Qed.
+  - admit.
+  - admit.
+  (* body cases *)
+Admitted.
 
 #[export]
 Hint Resolve inst_ae_lc inst_e_lc : core.
@@ -329,45 +306,71 @@ Inductive inst_obind : subst_set → obind → obindd → Prop :=
 where "T ⊩ ob ⇝? dob" := (inst_obind T ob dob) : type_scope
 .
 
-Reserved Notation "T1 ⊩ w1 ⇝′ w2 ⫣ T2" (at level 65, w1 at level 58).
-Reserved Notation "T1 ⊩ G1 ⟿ G2 ⫣ T2" (at level 65, G1 at level 58, G2 at level 58).
-Inductive inst_work : subst_set → work → dwork → subst_set → Prop :=
+Reserved Notation "T ⊩ c1 ⟿′ c2 " (at level 65, c1 at level 58).
+Inductive inst_cont : subst_set → cont → dcont → Prop :=
+| instc_done : forall Θ, wf_ss Θ → Θ ⊩ c_done ⟿′ dc_done
+| instc_app : forall Θ e1 e2 e1' e2' c c'
+  , Θ ⊩ e1' ⇝ e1
+  → Θ ⊩ e2' ⇝ e2
+  → Θ ⊩ c' ⟿′ c
+  → Θ ⊩ c_app e1' e2' c' ⟿′ dc_app e1 e2 c
+| instc_reduce : forall Θ c' c
+  , Θ ⊩ c' ⟿′ c
+  → Θ ⊩ c_reduce c' ⟿′ dc_reduce c
+| instc_check : forall Θ A A'
+  , Θ ⊩ A' ⇝ A
+  → Θ ⊩ c_check A' ⟿′ dc_check A
+| instc_inst : forall Θ A A' c c'
+  , Θ ⊩ A' ⇝ A
+  → Θ ⊩ c' ⟿′ c
+  → Θ ⊩ c_inst A' c' ⟿′ dc_inst A c
+where "T ⊩ c1 ⟿′ c2" := (inst_cont T c1 c2) : type_scope
+.
+
+Reserved Notation "T1 ⊩ w1 ⇝′ w2" (at level 65, w1 at level 58).
+Inductive inst_work : subst_set → work → dwork → Prop :=
 | instw_check : forall Θ ob ob' e1 e1' e2 e2' A A'
   , inst_obind Θ ob' ob → inst_expr Θ A' A
   → inst_expr Θ e1' e1 → inst_expr Θ e2' e2
-  → inst_work Θ (ob' ⊢? e1' <: e2' ⇐′ A') (ob ⊢? e1 <: e2 ⇐ A) Θ
+  → inst_work Θ (ob' ⊢? e1' <: e2' ⇐′ A') (ob ⊢? e1 <: e2 ⇐ A)
 | instw_cpct  : forall Θ A A' B B'
   , inst_expr Θ A' A → inst_expr Θ B' B
-  → inst_work Θ (A' ≲′ B') (A ≲ B) Θ
-| instw_infer : forall L Θ Θ' e1 e1' e2 e2' c c'
+  → inst_work Θ (A' ≲′ B') (A ≲ B)
+| instw_infer : forall Θ e1 e1' e2 e2' c c'
   , Θ ⊩ e1' ⇝ e1 → Θ ⊩ e2' ⇝ e2
-  → (forall x, x `notin` L → inst_wl Θ (c' $′ `′x) (c $ `'x) Θ')
-  → inst_work Θ (e1' <: e2' ⇒′ c') (e1 <: e2 ⇒ c) Θ'
-| instw_iapp : forall L Θ Θ' A A' e e1' e2' c c'
-  , Θ ⊩ e1' ⇝ e → Θ ⊩ e2' ⇝ e
-  → Θ ⊩ A' ⇝ A
-  → (forall x, x `notin` L → Θ ⊩ (c' $′ `′x) ⟿ (c $ `'x) ⫣ Θ')
-  → Θ ⊩ (A' ⋅ e1' & e2' ⇒′ c') ⇝′ (A ⋅ e ⇒ c) ⫣ Θ'
-| instw_red : forall L Θ Θ' A A' c c'
+  → inst_cont Θ c' c
+  → inst_work Θ (e1' <: e2' ⇒′ c') (e1 <: e2 ⇒ c)
+| instw_iapp : forall Θ A A' e1 e2 e1' e2' c c'
+  , Θ ⊩ A' ⇝ A
+  → Θ ⊩ e1' ⇝ e1
+  → Θ ⊩ e2' ⇝ e2
+  → inst_cont Θ c' c
+  → Θ ⊩ A' ⋅ e1' & e2' ⇒′ c' ⇝′ A ⋅ e1 & e2 ⇒ c
+| instw_red : forall Θ A A' c c'
   , inst_expr Θ A' A
-  → (forall x, x `notin` L → inst_wl Θ (c' $′ `′x) (c $ `'x) Θ')
-  → inst_work Θ (A' ⟼′ c') (A ⟼ c) Θ'
-where "T1 ⊩ w1 ⇝′ w2 ⫣ T2" := (inst_work T1 w1 w2 T2) : type_scope
-with inst_wl  : subst_set → worklist → dworklist → subst_set → Prop :=
+  → inst_cont Θ c' c
+  → inst_work Θ (A' ⟼′ c') (A ⟼ c)
+| instw_appc : forall Θ e e' c c'
+  , inst_expr Θ e' e → inst_cont Θ c' c
+  → inst_work Θ (c' $′ e') (c $ e)
+where "T1 ⊩ w1 ⇝′ w2" := (inst_work T1 w1 w2) : type_scope.
+
+Reserved Notation "T1 ⊩ G1 ⟿ G2 ⫣ T2" (at level 65, G1 at level 58, G2 at level 58).
+Inductive inst_wl  : subst_set → worklist → dworklist → subst_set → Prop :=
 | instwl_nil  : forall Θ, wf_ss Θ → inst_wl Θ wl_nil dwl_nil Θ
-| instwl_cons : forall Θ Θ' Θ'' Γ Γ' w w'
-  , inst_wl Θ Γ' Γ Θ' → inst_work Θ' w' w Θ''
-  → inst_wl Θ (Γ' ⊨′ w') (Γ ⊨ w) Θ''
+| instwl_cons : forall Θ Θ' Γ Γ' w w'
+  , inst_wl Θ Γ' Γ Θ' → inst_work Θ' w' w
+  → inst_wl Θ (Γ' ⊨′ w') (Γ ⊨ w) Θ'
 | instwl_var  : forall Θ Θ' Γ Γ' x A A'
   , inst_wl Θ Γ' Γ Θ' → x `notin` dom Θ' → inst_expr Θ' A' A
-  → inst_wl Θ (Γ' ,′ x :′ A') (Γ ,′' x : A) (Θ'; x : A!)
+  → inst_wl Θ (Γ' ,′ x :′ A') (Γ ,′' x : A) Θ'
 | instwl_kv : forall Θ Θ' Γ Γ' x k
   , inst_wl Θ Γ' Γ Θ' → x `notin` dom Θ'
   → inst_wl Θ (Γ' ,′ ⧼^x⧽) Γ (Θ'; x ≔ ⧼k⧽)
 | instwl_ex : forall Θ Θ' Γ Γ' x A' A e
   , mono_btype e
   → inst_wl Θ Γ' Γ Θ' → x `notin` dom Θ' → inst_expr Θ' A' A
-  → inst_wl Θ (Γ' ,′ ^x :′ A') Γ (Θ'; x : A ≔ e)
+  → inst_wl Θ (Γ' ,′ ^x :′ A') Γ (Θ'; x ≔ e)
 where "T1 ⊩ G1 ⟿ G2 ⫣ T2" := (inst_wl T1 G1 G2 T2) : type_scope
 .
 
@@ -378,17 +381,14 @@ Hint Constructors inst_expr inst_obind inst_work inst_wl : core.
 Definition transfer' (Γ' : worklist) (Γ : dworklist) : Prop :=
   exists Θ, inst_wl nil Γ' Γ Θ.
 
-Scheme winst_mut   := Induction for inst_work Sort Prop
-  with wlinst_mut := Induction for inst_wl   Sort Prop.
-
 Lemma inst_wl_ss_wf_l : forall Θ1 Θ2 Γ' Γ,
     Θ1 ⊩ Γ' ⟿ Γ ⫣ Θ2 → wf_ss Θ1.
 Proof.
   induction 1; auto.
 Qed.
 
-Lemma inst_w_ss_wf_l : forall Θ1 Θ2 w' w,
-    Θ1 ⊩ w' ⇝′ w ⫣ Θ2 → wf_ss Θ1.
+Lemma inst_w_ss_wf_l : forall Θ1 w' w,
+    Θ1 ⊩ w' ⇝′ w → wf_ss Θ1.
 Proof.
   induction 1; eauto.
 Qed.
@@ -396,21 +396,8 @@ Qed.
 Lemma inst_wl_ss_wf_r : forall Θ1 Γ' Γ Θ2,
     Θ1 ⊩ Γ' ⟿ Γ ⫣ Θ2 → wf_ss Θ2.
 Proof.
-  intros.
-  pattern Θ1, Γ', Γ, Θ2, H.
-  apply wlinst_mut with
-    (P := fun Θ1 w' w Θ2 (_ : Θ1 ⊩ w' ⇝′ w ⫣ Θ2) => wf_ss Θ2); intros;
-    inst_cofinites_with_new; eauto 3.
+  induction 1; eauto 3.
 Qed.
 
 #[export]
 Hint Resolve inst_wl_ss_wf_l inst_w_ss_wf_l inst_wl_ss_wf_r : core.
-
-Lemma inst_w_ss_wf_r : forall Θ1 w' w Θ2,
-    Θ1 ⊩ w' ⇝′ w ⫣ Θ2 → wf_ss Θ2.
-Proof.
-  induction 1; inst_cofinites_with_new; eauto 2.
-Qed.
-
-#[export]
-Hint Resolve inst_w_ss_wf_r : core.

@@ -17,8 +17,9 @@ Proof.
     let E := fresh "E" in
       assert (e1 = e2) as E by (eapply binds_unique; eauto);
       inversion E; now subst
-  end;
+  end.
 
+(*
   repeat match goal with
   (* basic inductive cases *)
   | H1 : _ ⊩ ?e ⇝ ?e1 , H2 : _ ⊩ ?e ⇝ ?e2 |- _ =>
@@ -30,9 +31,10 @@ Proof.
       (L1 `union` L2 `union` fv_bexpr e1 `union` fv_bexpr e2);
          assert (e1 ^`' x = e2 ^`' x) by eauto;
          assert (e1 = e2) by (eapply open_bexpr_wrt_bexpr_inj; eauto)
-  end;
+  end.
   congruence.
-Qed.
+*)
+Admitted.
 
 Lemma inst_wl_split : forall Γ1' Γ2' Γ Θ Θ'
   , Θ ⊩ Γ1' ⫢′ Γ2' ⟿ Γ ⫣ Θ'
@@ -46,7 +48,8 @@ Proof.
   - inversion H; subst.
     pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
     exists Γ1, (Γ2 ⊨ w0), Θ0. repeat split; eauto.
-  - destruct b; inversion H; subst.
+  - destruct bd; inversion H; subst.
+(*
     + pose proof (IHΓ2' _ _ _ H4) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
       exists Γ1, (Γ2 ,′' x : A0), Θ0.
       subst. repeat split; auto.
@@ -56,41 +59,20 @@ Proof.
     + pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
       exists Γ1, Γ2, Θ0.
       subst. repeat split; auto.
-Qed.
+ *)
+Admitted.
 
-Scheme wl_mut   := Induction for worklist Sort Prop
-  with work_mut := Induction for work     Sort Prop.
 
 Lemma inst_wl_ss_extend : forall Θ Γ' Γ Θ'
   , Θ ⊩ Γ' ⟿ Γ ⫣ Θ'
   → exists Θ0, Θ ;; Θ0 = Θ'.
 Proof.
-  intros * H.
-  pattern Θ, Γ', Γ, Θ', H.
-  apply wlinst_mut with
-    (P := fun Θ w' w Θ' (_ : Θ ⊩ w' ⇝′ w ⫣ Θ') => exists Θ0, Θ ;; Θ0 = Θ');
-    intros.
-
+  induction 1.
   - now exists nil.
-  - now exists nil.
-  - pick fresh x. eauto.
-  - pick fresh x. eauto.
-  - pick fresh x. eauto.
-  - now exists nil.
-
-  - destruct H0. destruct H1. subst. now exists (x ;; x0).
-  - destruct H0. subst. now exists (x0; x : A !).
-  - destruct H0. subst. now exists (x0; x ≔ ⧼k⧽).
-  - destruct H0. subst. now exists (x0; x : A ≔ e).
-Qed.
-
-Lemma inst_w_ss_extend : forall Θ w' w Θ'
-  , Θ ⊩ w' ⇝′ w ⫣ Θ'
-  → exists Θ0, Θ ;; Θ0 = Θ'.
-Proof.
-  induction 1; solve
-    [now exists nil
-    | pick fresh x; eauto using inst_wl_ss_extend].
+  - destruct IHinst_wl. destruct H1. subst. now exists x.
+  - destruct IHinst_wl. subst. now exists x0.
+  - destruct IHinst_wl. subst. now exists (x0; x ≔ ⧼k⧽).
+  - destruct IHinst_wl. subst. now exists (x0; x ≔ e).
 Qed.
 
 Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
@@ -99,7 +81,8 @@ Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
 Proof.
   intros * H.
   dependent induction H; intros; eauto 4.
-Qed.
+  (* body cases *)
+Admitted.
 
 #[local]
 Hint Resolve inst_e_weakening : inst_weakening.
@@ -143,6 +126,8 @@ Qed.
 
 Hint Immediate wf_ss_unapp wf_ss_uncons : inst_weakening.
 Hint Immediate wf_ss_unapp wf_ss_uncons : wf_ss.
+
+(*
 
 Ltac clear_app_suffix_impl :=
   match goal with
@@ -1103,3 +1088,4 @@ Proof.
     eapply inst_e_rev_subst in H2 as (B0' & <- & H2); eauto.
     exists (A0' ≲ B0'), nil; repeat split; auto.
 Admitted.
+*)

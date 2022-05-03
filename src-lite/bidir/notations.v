@@ -126,9 +126,10 @@ Notation "e ⇒ c" :=
   (dw_infer e e c)
     (at level 55, no associativity) : dwork_scope.
 
-Notation "A ⟹ c" :=
-  (dw_infer_app A c)
-    ( at level 55, no associativity) : dwork_scope.
+Notation "A ⋅ e1 & e2 ⇒ c" :=
+  (dw_infer_app A e1 e2 c)
+    ( at level 55, e1 at level 50, e2 at level 50
+    , no associativity) : dwork_scope.
 
 Notation "A ⟼ c" :=
   (dw_reduce A c)

@@ -38,9 +38,10 @@ Notation "e ⇒′ c" :=
   (w_infer e e c)
     (at level 55, no associativity) : work_scope.
 
-Notation "A ⟹′ c" :=
-  (w_infer_app A c)
-    ( at level 55, no associativity) : work_scope.
+Notation "A ⋅ e1 & e2 ⇒′ c" :=
+  (w_infer_app A e1 e2 c)
+    ( at level 55, e1 at level 50
+    , e2 at level 50, no associativity) : work_scope.
 
 Notation "A ⟼′ wl" :=
   (w_reduce A wl)
@@ -112,11 +113,11 @@ Notation "e ^`′ x" :=
 Notation "e1 ^^′ e2" :=
   (open_aexpr_wrt_aexpr e1 e2) (at level 48, left associativity) : aexpr_scope.
 
-Notation "λ′ A , e : B" :=
+Notation "'λ′' A , e : B" :=
   (ae_abs A (ab_anno e B))
     (at level 50, A at level 50, e at level 50, no associativity) : aexpr_scope.
 
-Notation "Λ′ A , e : B" :=
+Notation "'Λ′' A , e : B" :=
   (ae_bind A (ab_anno e B))
     (at level 50, A at level 50, e at level 50, no associativity) : aexpr_scope.
 
@@ -142,12 +143,6 @@ Notation "⧼ `^ x ⧽" :=
 
 Notation "`^ x" :=
   (ae_ex x) (at level 0, x at level 0, no associativity) : aexpr_scope.
-
-Notation "λ′ e" :=
-  (ae_abs e) (at level 50, no associativity) : aexpr_scope.
-
-Notation "Λ′ e" :=
-  (ae_bind e) (at level 50, no associativity) : aexpr_scope.
 
 Notation "e ::′ A" :=
   (ae_anno e A) (at level 50, no associativity) : aexpr_scope.
