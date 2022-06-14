@@ -60,7 +60,7 @@ Notation "'Π' A , B" := (fun_pi A B)
 
 Notation "G ⊢ A '⇒Π' B , C" :=
   (infer_app G A (fun_pi B C))
-    ( at level 65, A at level 50, no associativity) : type_scope.
+    ( at level 65, A at level 50, B at level 50, no associativity) : type_scope.
 
 Notation "G ⊢ A ⟼ B" := (greduce G A B)
     (at level 65, A at level 50, no associativity) : type_scope.

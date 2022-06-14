@@ -44,39 +44,50 @@ Definition binding_var (b : binding) : var :=
   end
 .
 
+Fixpoint wl_dom (Γ : worklist) : atoms :=
+  match Γ with
+  | wl_nil => {}
+  | Γ ⊨′ w => wl_dom Γ
+  | Γ ,′ b => add (binding_var b) (wl_dom Γ)
+  end
+.
+
+
 Definition psi_dom (ψ : list binding) : atoms :=
   fold_right (fun b acc => add (binding_var b) acc) {} ψ.
 
-Reserved Notation "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2"
-  (at level 65, psi at level 60, x at level 0, e at level 50, no associativity).
-Inductive reorder : worklist → list binding → var → aexpr → worklist → Prop :=
+Reserved Notation "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2 ++ G3"
+  (at level 65, psi at level 60, x at level 0, e at level 50
+  , G2 at level 58, no associativity).
+Inductive reorder
+  : worklist → list binding → var → aexpr → worklist → worklist → Prop :=
 | re_stop : forall Γ ψ x A e
   , x `notin` fex_aexpr e
-  → Γ ,′ ^x :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ ⫢′ to_wl ψ ,′ ^x :′ A
-| re_skip_work : forall Γ w ψ x e Γ'
-  , Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ⊨′ w ‖ ψ ⊢ ^x ≔ e ⊣ Γ ⊨′ w
-| re_bind_var : forall Γ x A ψ y e Γ'
+  → Γ ,′ ^x :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ ⫢′ to_wl ψ (*,′ ^x :′ A *) ++ wl_nil
+| re_skip_work : forall Γ w ψ x e Γ1' Γ2'
+  , Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ⊨′ w ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2' ⊨′ w
+| re_bind_var : forall Γ x A ψ y e Γ1' Γ2'
   , y `notin` fv_psi ψ `union` fv_aexpr e
-  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ,′ y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ' ,′ y :′ A
-| re_ex_move : forall Γ x A ψ y e Γ'
+  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ,′ y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2' ,′ y :′ A
+| re_ex_move : forall Γ x A ψ y e Γ1' Γ2'
   , y `in` fex_psi ψ `union` fex_aexpr e
-  → Γ ‖ ^y :′ A :: ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ,′ ^y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-| re_ex_stay : forall Γ x A ψ y e Γ'
+  → Γ ‖ ^y :′ A :: ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ,′ ^y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+| re_ex_stay : forall Γ x A ψ y e Γ1' Γ2'
   , y `notin` fex_psi ψ `union` fex_aexpr e
-  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ,′ ^y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ' ,′ ^y :′ A
-| re_k_move : forall Γ k ψ x e Γ'
+  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ,′ ^y :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2' ,′ ^y :′ A
+| re_k_move : forall Γ k ψ x e Γ1' Γ2'
   , k `in` fkv_psi ψ `union` fkv_aexpr e
-  → Γ ‖ ⧼^k⧽ :: ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ,′ ⧼^k⧽ ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-| re_k_stay : forall Γ k ψ x e Γ'
+  → Γ ‖ ⧼^k⧽ :: ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ,′ ⧼^k⧽ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+| re_k_stay : forall Γ k ψ x e Γ1' Γ2'
   , k `notin` fkv_psi ψ `union` fkv_aexpr e
-  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ'
-  → Γ ,′ ⧼^k⧽ ‖ ψ ⊢ ^x ≔ e ⊣ Γ' ,′ ⧼^k⧽
-where "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2" := (reorder G1 psi x e G2) : type_scope
+  → Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
+  → Γ ,′ ⧼^k⧽ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2' ,′ ⧼^k⧽
+where "G1 ‖ psi ⊢ ^ x ≔ e ⊣ G2 ++ G3" := (reorder G1 psi x e G2 G3) : type_scope
 .
 
 #[export]
@@ -286,7 +297,7 @@ Inductive wl_step : worklist -> Prop :=
     → ⪧′ Γ ,′ ⧼^k2⧽ ⊨′ c $′ ⧼`^k2⧽
       ⊨′ x :?′ A1 ⊢? B1 ^`′ x ⇐′ ⧼`^k2⧽
       ⊨′ x :?′ A2 ⊢? B1 ^`′ x <: B2 ^`′ x ⇐′ ⧼`^k2⧽
-      ,′ ⧼^k1⧽ ⊨′ A2 <: A2 ⇐′ ⧼`^k1⧽)
+      ,′ ⧼^k1⧽ ⊨′ A1 ⇐′ ⧼`^k1⧽ ⊨′ A2 <: A1 ⇐′ ⧼`^k1⧽)
   → ⪧′ Γ ⊨′ ae_pi A1 B1 <: ae_pi A2 B2 ⇒′ c
 | st_bind : forall L Γ A1 A2 B1 B2 e1 e2 c
   , (forall x, x `notin` L → forall k1, k1 `notin` add x L
@@ -339,18 +350,20 @@ Inductive wl_step : worklist -> Prop :=
   , ^x :′ A  ∈′ Γ
   → ⪧′ Γ ⊨′ c $′ A
   → ⪧′ Γ ⊨′ `^x <: `^x ⇒′ c
-| st_ex_l : forall L Γ Γ' x A e e' ψ c
-  , ^x :′ A  ∈′ Γ → `^x <> e
+| st_ex_l : forall L Γ Γ1' Γ2' x A e e' ψ c
+  , ^x :′ A ∈′ Γ → `^x <> e
   → e ⤚ ⊖ ⇥ e' ‖ ψ \ L
-  → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ'
-  → ⪧′ ⟦e' /′ ^x⟧ Γ' ⊨′ e' <: e ⇒′ c_inst A (ex_subst_cont e' x c)
+  → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ1' ++ Γ2'
+  → ⪧′ Γ1' ⊨′ e' ⇐′ A
+    ⫢′ ⟦e' /′ ^x⟧ Γ2' ⊨′ e' <: e ⇒′ ex_subst_cont e' x c
       (* ⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽ *)
   → ⪧′ Γ ⊨′ `^x <: e ⇒′ c
-| st_ex_r : forall L Γ Γ' x A e e' ψ c
+| st_ex_r : forall L Γ Γ1' Γ2' x A e e' ψ c
   , ^x :′ A  ∈′ Γ → `^x <> e
   → e ⤚ ⊕ ⇥ e' ‖ ψ \ L
-  → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ'
-  → ⪧′ ⟦e' /′ ^x⟧ Γ' ⊨′ e <: e' ⇒′ c_inst A (ex_subst_cont e' x c)
+  → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ1' ++ Γ2'
+  → ⪧′ Γ1' ⊨′ e' ⇐′ A
+    ⫢′ ⟦e' /′ ^x⟧ Γ1' ⊨′ e <: e' ⇒′ ex_subst_cont e' x c
      (* (⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽) *)
   → ⪧′ Γ ⊨′ e <: `^x ⇒′ c
 
@@ -422,7 +435,6 @@ Inductive wl_step : worklist -> Prop :=
 | st_comp_sub : forall L Γ A B
   , (forall k, k `notin` L → ⪧′ Γ,′ ⧼^k⧽ ⊨′ A <: B ⇐′ ⧼`^k⧽)
   → ⪧′ Γ ⊨′ A ≲′ B
-(* TODO: apply continuation *)
 | st_app_cont : forall Γ c e Γ'
   , apply_cont c e Γ'
   → ⪧′ Γ ⫢′ Γ'

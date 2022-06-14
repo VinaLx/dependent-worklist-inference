@@ -1,4 +1,6 @@
 Require Export bidir.notations.
+Require Import Program.Equality.
+Require Import bidir.properties.
 
 Reserved Notation "G1 ⫢ G2" (at level 58, left associativity).
 Fixpoint dwl_app (G1 G2 : dworklist) :=
@@ -17,11 +19,19 @@ Definition dwl_ocons (Γ : dworklist) (b : obindd) :=
   end
 .
 
+Fixpoint dwl_dom (Γ : dworklist) : atoms :=
+  match Γ with
+  | dwl_nil => {}
+  | Γ ⊨ w => dwl_dom Γ
+  | Γ ,′' x : A => add x (dwl_dom Γ)
+  end
+.
+
 Notation "Γ ,? b" :=
   (dwl_ocons Γ b)
     (at level 58, left associativity) : dworklist_scope.
 
-Reserved Notation "⌊ wl ⌋" (at level 0, no associativity).
+Reserved Notation "⌊ wl ⌋" (at level 0, wl at level 58, no associativity).
 Fixpoint to_bctx (Γ : dworklist) : bcontext :=
   match Γ with
   | Γ' ⊨ w => ⌊ Γ' ⌋
@@ -29,6 +39,13 @@ Fixpoint to_bctx (Γ : dworklist) : bcontext :=
   | dwl_nil => bctx_nil
   end
 where "⌊ wl ⌋" := (to_bctx wl) : bcontext_scope.
+
+Lemma app_to_bctx_distr : forall Γ1 Γ2,
+    ⌊ Γ1 ⫢ Γ2 ⌋ = ⌊ Γ1 ⌋ ,,' ⌊ Γ2 ⌋.
+Proof.
+  induction Γ2; simpl; intros; auto.
+  - now rewrite IHΓ2.
+Qed.
 
 Inductive apply_dcont : dcont → bexpr → dworklist → Prop :=
 | apdc_done : forall e, apply_dcont dc_done e dwl_nil
@@ -59,7 +76,7 @@ Inductive dwl_step : dworklist → Prop :=
   → ⪧ Γ ⊨ c $ B
   → ⪧ Γ ⊨ A ⟼ c
 | dst_comp : forall Γ A B k
-  , ⌊ Γ ⌋ ⊢ A <: B ⇒ ⧼ k ⧽'
+  , ⌊ Γ ⌋ ⊢ A <: B ⇐ ⧼ k ⧽'
   → ⪧ Γ
   → ⪧ Γ ⊨ A ≲ B
 | dst_comp_box : forall Γ
@@ -72,8 +89,37 @@ Inductive dwl_step : dworklist → Prop :=
   , apply_dcont c e Γ'
   → ⪧ Γ ⫢ Γ'
   → ⪧ Γ ⊨ c $ e
+| dst_bind : forall Γ x A k
+  , ⪧ Γ
+  → ⌊ Γ ⌋ ⊢ A ⇐ ⧼ k ⧽'
+  → x `notin` dwl_dom Γ
+  → ⪧ Γ ,′' x : A
 where "⪧ wl" := (dwl_step wl) : type_scope
 .
+
+Lemma solve_infer_infer : forall Γ e1 e2 c
+  , ⪧ Γ ⊨ e1 <: e2 ⇒ c
+  → exists A, ⌊ Γ ⌋ ⊢ e1 <: e2 ⇒ A ∧ ⪧ Γ ⊨ c $ A.
+Proof.
+  intros.
+  inversion H; subst.
+  eauto.
+Qed.
+
+Lemma solve_check_check : forall Γ ob e1 e2 A
+  , ⪧ Γ ⊨ ob ⊢? e1 <: e2 ⇐ A
+  → ⌊ Γ ,? ob ⌋ ⊢ e1 <: e2 ⇐ A.
+Proof.
+  intros.
+  dependent destruction H.
+  dependent destruction H.
+  dependent destruction H0.
+  dependent destruction H0.
+  inversion H1; subst.
+  - eauto.
+  - eauto using infer_k_check.
+Qed.
+
 
 #[export]
 Hint Constructors dwl_step : core.
