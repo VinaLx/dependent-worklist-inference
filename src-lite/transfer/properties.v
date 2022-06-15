@@ -2,39 +2,105 @@ Require Import transfer.syntax.
 Require Import lc.
 Require Import Program.Equality.
 Require Import list_properties.
+Require Import alg.ln_inf_extra.
+Require Import bidir.ln_inf_extra.
 Require Import ln_utils.
 
 Hint Extern 2 (_ = _) => simpl; congruence : core.
 
+Lemma fresh_dom_fresh_ctx : forall x Θ,
+    x `notin` dom Θ → x `notin` bctx_dom ⌊ Θ ⌋′.
+Proof.
+  induction Θ; simpl; intros.
+  - auto.
+  - destruct a. destruct s; auto.
+Qed.
+
+Lemma inst_wl_ss_dom_notin_r : forall Θ Θ' Γ' Γ x
+  , Θ ⊩ Γ' ⟿ Γ ⫣ Θ'
+  → x `notin` dom Θ
+  → x `notin` wl_dom Γ'
+  → x `notin` dom Θ'.
+Proof.
+  induction 1; simpl; intros; auto.
+Qed.
+
+Hint Resolve inst_wl_ss_dom_notin_r : ss_dom.
+
+Ltac gather_atoms_transfer :=
+  let L0 := gather_atoms_with
+              (fun x : atom => {{ x }}) in
+  let L1 := gather_atoms_with
+              (fun x : atoms => x) in
+  let L2 := gather_atoms_with
+              (fun x : bexpr => fv_bexpr x) in
+  let L3 := gather_atoms_with
+              (fun x : aexpr =>
+                 fv_aexpr x `union` fex_aexpr x `union` fkv_aexpr x) in
+  let L4 := gather_atoms_with
+              (fun x : subst_set =>
+                 fv_ss x `union` dom x) in
+  let L5 := gather_atoms_with
+              (fun x : dworklist =>
+                 fv_dworklist x `union` dwl_dom x) in
+  let L6 := gather_atoms_with
+              (fun x : worklist =>
+                 fv_worklist x `union` wl_dom x) in
+  let L7 := gather_atoms_with
+              (fun x : bbody => fv_bbody x) in
+  let L8 := gather_atoms_with
+              (fun x : abody => fv_abody x) in
+  let L9 := gather_atoms_with
+              (fun x : cont =>
+                 fv_cont x `union` fex_cont x `union` fkv_cont x) in
+  constr:(L0 `union` L1 `union` L2 `union` L3 `union` L4
+            `union` L5 `union` L6 `union` L7 `union` L8
+            `union` L9).
+
+Tactic Notation "pick" "fresh" ident(x) "for" "all" :=
+  let L  := gather_atoms_transfer in
+  pick fresh x for L.
+
+Local Ltac conclude_det_ih :=
+  match goal with
+  | H1 : _ ⊩ ?e ⇝ ?e1 , H2 : _ ⊩ ?e ⇝ ?e2 |- _ =>
+     assert (e1 = e2) as -> by auto; clear H1 H2
+  | H1 : forall x, _ → inst_body _ _ (open_bbody_wrt_bexpr ?b1 `'x)
+  , H2 : forall x, _ → inst_body _ _ (open_bbody_wrt_bexpr ?b2 `'x)
+    |- _ =>
+      let x := fresh "x" in
+      pick fresh x for all;
+      assert (open_bbody_wrt_bexpr b1 `'x = open_bbody_wrt_bexpr b2 `'x) by auto;
+      assert (b1 = b2) as -> by (eapply open_bbody_wrt_bexpr_inj; eauto);
+      clear H1 H2
+  | H1 : forall x, _ → _ ⊩ _ ⇝ ?e1 ^`' x
+  , H2 : forall x, _ → _ ⊩ _ ⇝ ?e2 ^`' x
+    |- _ =>
+      let x := fresh "x" in
+      pick fresh x for all;
+      assert (e1 ^`' x = e2 ^`' x) by eauto;
+      assert (e1 = e2) as -> by (eapply open_bexpr_wrt_bexpr_inj; eauto);
+      clear H1 H2
+  end
+.
+
+Local Ltac conclude_dets_ih := repeat conclude_det_ih.
+
 Lemma inst_e_det : forall e' Θ e1,
   uniq Θ → Θ ⊩ e' ⇝ e1 → forall e2, Θ ⊩ e' ⇝ e2 → e1 = e2.
 Proof.
-  intros * Uniq H1.
-  induction H1; intros e2 H2; inversion H2; subst; auto;
+  induction 2 using inste_mut with
+    (P0 := fun Θ b' b1 _ => uniq Θ → forall b2, inst_body Θ b' b2 → b1 = b2);
+  try (intros e2 H2; dependent destruction H2; auto);
   (* solving all the binds with binds_unique in metalib *)
   try match goal with
   | H1 : binds ?x ?e1 ?c , H2 : binds ?x ?e2 ?c |- _ = _ =>
     let E := fresh "E" in
       assert (e1 = e2) as E by (eapply binds_unique; eauto);
       inversion E; now subst
-  end.
-
-(*
-  repeat match goal with
-  (* basic inductive cases *)
-  | H1 : _ ⊩ ?e ⇝ ?e1 , H2 : _ ⊩ ?e ⇝ ?e2 |- _ =>
-      assert (e1 = e2) by auto; clear H1 H2
-  (* inductive cases with locally nameless mess *)
-  | H1 : forall x, x `notin` ?L1 → _ ⊩ _ ⇝ ?e1 ^`' x
-  , H2 : forall x, x `notin` ?L2 → _ ⊩ _ ⇝ ?e2 ^`' x
-    |- _ => pick fresh x for
-      (L1 `union` L2 `union` fv_bexpr e1 `union` fv_bexpr e2);
-         assert (e1 ^`' x = e2 ^`' x) by eauto;
-         assert (e1 = e2) by (eapply open_bexpr_wrt_bexpr_inj; eauto)
-  end.
-  congruence.
-*)
-Admitted.
+    end;
+  conclude_dets_ih; auto.
+Qed.
 
 Lemma inst_wl_split : forall Γ1' Γ2' Γ Θ Θ'
   , Θ ⊩ Γ1' ⫢′ Γ2' ⟿ Γ ⫣ Θ'
@@ -44,35 +110,36 @@ Lemma inst_wl_split : forall Γ1' Γ2' Γ Θ Θ'
     ∧ Θ0 ⊩ Γ2' ⟿ Γ2 ⫣ Θ'.
 Proof.
   induction Γ2'; simpl; intros.
-  - exists Γ, dwl_nil, Θ'; simpl; eauto.
+  - exists Γ, dwl_nil, Θ'; simpl; eauto with inst_wf_ss.
   - inversion H; subst.
     pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
     exists Γ1, (Γ2 ⊨ w0), Θ0. repeat split; eauto.
   - destruct bd; inversion H; subst.
-(*
-    + pose proof (IHΓ2' _ _ _ H4) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
+    + pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
       exists Γ1, (Γ2 ,′' x : A0), Θ0.
-      subst. repeat split; auto.
-    + pose proof (IHΓ2' _ _ _ H5) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
+      subst. repeat split; eauto.
+    + pose proof (IHΓ2' _ _ _ H4) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
       exists Γ1, Γ2, Θ0.
-      subst. repeat split; auto.
+      subst. repeat split; eauto.
     + pose proof (IHΓ2' _ _ _ H3) as (Γ1 & Γ2 & Θ0 & E & Inst1 & Inst2).
       exists Γ1, Γ2, Θ0.
-      subst. repeat split; auto.
- *)
-Admitted.
+      subst. repeat split; eauto.
+Qed.
 
 
 Lemma inst_wl_ss_extend : forall Θ Γ' Γ Θ'
   , Θ ⊩ Γ' ⟿ Γ ⫣ Θ'
   → exists Θ0, Θ ;; Θ0 = Θ'.
 Proof.
-  induction 1.
-  - now exists nil.
-  - destruct IHinst_wl. destruct H1. subst. now exists x.
-  - destruct IHinst_wl. subst. now exists x0.
-  - destruct IHinst_wl. subst. now exists (x0; x ≔ ⧼k⧽).
-  - destruct IHinst_wl. subst. now exists (x0; x ≔ e).
+  induction 1;
+    (* when ss doesn't change *)
+    try solve [now exists nil];
+    (* otherwise, extract the components of the tail *)
+    destruct IHinst_wl as [Θ0 <-].
+  - now exists Θ0.
+  - now exists (Θ0; x : A!).
+  - now exists (Θ0; x ≔ ⧼k⧽).
+  - now exists (Θ0; x : A ≔ e).
 Qed.
 
 Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
@@ -80,9 +147,15 @@ Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
   → Θ1 ;; Θ' ;; Θ2 ⊩ e' ⇝ e.
 Proof.
   intros * H.
-  dependent induction H; intros; eauto 4.
-  (* body cases *)
-Admitted.
+  remember (Θ1 ;; Θ2) as Θ.
+  generalize dependent Θ2. generalize dependent Θ1.
+  pattern Θ, e', e, H.
+  apply inste_mut with
+    (P0 := fun Θ b' b _ =>
+        forall Θ1 Θ2, Θ = Θ1 ;; Θ2 → wf_ss (Θ1 ;; Θ' ;; Θ2)
+            → inst_body (Θ1 ;; Θ' ;; Θ2) b' b);
+    intros; subst; eauto 4. (* make use of `binds_weaken` *)
+Qed.
 
 #[local]
 Hint Resolve inst_e_weakening : inst_weakening.
@@ -96,8 +169,154 @@ Proof.
   auto with inst_weakening.
 Qed.
 
-#[local]
-Hint Resolve inst_e_weakening_app : inst_weakening.
+Lemma inst_e_weakening_cons : forall Θ sse e' e
+  , Θ ⊩ e' ⇝ e → wf_ss (cons sse Θ)
+  → cons sse Θ ⊩ e' ⇝ e.
+Proof.
+  intros.
+  replace (cons sse Θ) with (Θ ;; one sse ;; nil) by auto.
+  auto with inst_weakening.
+Qed.
+
+#[export]
+Hint Resolve
+  inst_e_weakening_app
+  inst_e_weakening_cons
+  inst_e_weakening : inst_weakening.
+
+Lemma to_ctx_ignore_ex_k : forall Θ1 Θ2 x k
+  , ⌊ Θ1 ; x ≔ ⧼ k ⧽ ;; Θ2 ⌋′ = ⌊ Θ1 ;; Θ2 ⌋′.
+Proof.
+  intros; induction Θ2; simpl.
+  - reflexivity.
+  - destruct a. destruct s; auto.
+Qed.
+
+Lemma dom_remove : forall A (Θ1 : list (atom * A)) Θ2 x e
+  , dom (Θ2 ++ Θ1) [<=] dom (Θ2 ++ (cons (pair x e) Θ1)).
+Proof.
+  intros; induction Θ2; simpl.
+  - fsetdec.
+  - destruct a. fsetdec.
+Qed.
+
+Lemma ss_wf_strengthening_k : forall Θ1 Θ2 x k
+  , wf_ss (Θ1 ; x ≔ ⧼ k ⧽ ;; Θ2)
+  → wf_ss (Θ1 ;; Θ2).
+Proof.
+  intros *; induction Θ2; simpl; intros.
+  - now inversion H.
+  - destruct a. destruct s; dependent destruction H; econstructor;
+      try solve
+        [ auto
+        | assert (dom (Θ1 ;; Θ2) [<=] dom (Θ1 ; x ≔ ⧼k⧽;; Θ2)) by
+          apply dom_remove; fsetdec
+        | rewrite to_ctx_ignore_ex_k in *; eassumption].
+Qed.
+
+#[export]
+Hint Resolve ss_wf_strengthening_k : ss_strengthen.
+
+Lemma in_strengthening : forall A (xs : list A) a ys b,
+    In a (xs ++ b :: ys) → b <> a → In a (xs ++ ys).
+Proof.
+  intros *; induction xs; simpl; intros.
+  - destruct H; easy.
+  - destruct H; auto.
+Qed.
+
+#[export]
+Hint Unfold binds : ss_strengthen.
+#[export]
+Hint Resolve in_strengthening : ss_strengthen.
+
+Hint Extern 1 (_ <> _) => discriminate : core.
+
+Lemma inst_e_strengthening_k : forall Θ1 Θ2 x k e' e
+  , Θ1 ; x ≔ ⧼ k ⧽ ;; Θ2 ⊩ e' ⇝ e
+  → x `notin` fkv_aexpr e'
+  → Θ1 ;; Θ2 ⊩ e' ⇝ e.
+Proof.
+  intros * H.
+  remember (Θ1; x ≔ ⧼ k ⧽ ;; Θ2) as Θ.
+  generalize dependent Θ2.
+  pattern Θ, e', e, H.
+  eapply inste_mut with
+    (P0 := fun Θ b' b _ => forall Θ2
+      , Θ = Θ1; x ≔ ⧼ k ⧽;; Θ2
+      → x `notin` fkv_abody b'
+      → inst_body (Θ1 ;; Θ2) b' b)
+  ; simpl in *; intros; subst;
+    eauto 4 with ss_strengthen.
+  - eauto with ss_strengthen.
+  - eauto 8 with ss_strengthen.
+  - pick fresh x' and apply inste_abs;
+      eauto 3 with ss_strengthen lngen.
+  - pick fresh x' and apply inste_bind;
+      eauto 3 with ss_strengthen lngen.
+  - pick fresh x' and apply inste_pi;
+      eauto 3 with ss_strengthen lngen.
+  - pick fresh x' and apply inste_all;
+      eauto 3 with ss_strengthen lngen.
+Qed.
+
+Lemma inst_e_strengthening_k_cons : forall Θ x k e' e
+  , Θ; x ≔ ⧼ k ⧽ ⊩ e' ⇝ e
+  → x `notin` fkv_aexpr e'
+  → Θ ⊩ e' ⇝ e.
+Proof.
+  intros *.
+  replace (Θ; x ≔ ⧼ k ⧽) with (Θ ; x ≔ ⧼ k ⧽ ;; nil) by auto.
+  apply inst_e_strengthening_k.
+Qed.
+
+#[export]
+Hint Resolve
+  inst_e_strengthening_k
+  inst_e_strengthening_k_cons
+  : ss_strengthen.
+
+Lemma inst_c_strengthening_k : forall Θ1 Θ2 x k c' c
+  , Θ1; x ≔ ⧼ k ⧽ ;; Θ2 ⊩ c' ⟿′ c
+  → x `notin` fkv_cont c'
+  → Θ1 ;; Θ2 ⊩ c' ⟿′ c.
+Proof.
+  intros * H.
+  dependent induction H; simpl; intros; eauto with ss_strengthen.
+Qed.
+
+Lemma inst_c_strengthening_k_cons : forall Θ x k c' c
+  , Θ; x ≔ ⧼ k ⧽ ⊩ c' ⟿′ c
+  → x `notin` fkv_cont c'
+  → Θ ⊩ c' ⟿′ c.
+Proof.
+  intros *.
+  replace (Θ; x ≔ ⧼ k ⧽) with (Θ; x ≔ ⧼ k ⧽;; nil) by auto.
+  apply inst_c_strengthening_k.
+Qed.
+
+#[export]
+Hint Resolve
+  inst_c_strengthening_k
+  inst_c_strengthening_k_cons
+  : ss_strengthen.
+
+Ltac conclude_det :=
+  match goal with
+  | H1 : ?Θ ⊩ ?e ⇝ ?e1
+  , H2 : ?Θ ⊩ ?e ⇝ ?e2 |- _ =>
+      match e1 with
+      | e2 => clear H1
+      | _ => assert (e1 = e2) as -> by (eauto 4 using inst_e_det with inst_wf_ss)
+      end
+      ; clear H1
+  | H1 : ?Θ ⊩ ?e ⇝ ?e1
+  , H2 : ?Θ; ?x ≔ ⧼_⧽ ⊩ ?e ⇝ ?e2 |- _ =>
+      apply inst_e_strengthening_k_cons in H2; auto
+  end
+.
+
+Ltac conclude_dets := repeat conclude_det.
 
 Lemma inst_ob_weakening : forall Θ1 Θ2 Θ' ob' ob
   , Θ1 ;; Θ2 ⊩ ob' ⇝? ob → wf_ss (Θ1 ;; Θ' ;; Θ2)
@@ -126,8 +345,6 @@ Qed.
 
 Hint Immediate wf_ss_unapp wf_ss_uncons : inst_weakening.
 Hint Immediate wf_ss_unapp wf_ss_uncons : wf_ss.
-
-(*
 
 Ltac clear_app_suffix_impl :=
   match goal with
@@ -177,14 +394,13 @@ Ltac conclude_ss_extend_impl :=
   match goal with
   | H : ?t1 ⊩ _ ⟿ _ ⫣ ?t2 |- _ =>
       process t1 t2 ltac:(eapply inst_wl_ss_extend; eassumption)
-  | H : ?t1 ⊩ _ ⇝′ _ ⫣ ?t2 |- _ =>
-      process t1 t2 ltac:(eapply inst_w_ss_extend; eassumption)
   end
 .
 
 Ltac conclude_ss_extend :=
   repeat conclude_ss_extend_impl.
 
+(*
 Lemma inst_wl_weakening : forall Θ1 Θ2 Θ3 Γ' Γ
   , Θ1 ;; Θ2 ⊩ Γ' ⟿ Γ ⫣ Θ1 ;; Θ2 ;; Θ3
   → forall Θ', wf_ss (Θ1 ;; Θ' ;; Θ2 ;; Θ3)
@@ -234,6 +450,7 @@ Proof.
        now rewrite app_assoc.
 Admitted.
 
+
 Hint Resolve inst_wl_weakening : inst_weakening.
 
 Lemma inst_w_weakening : forall Θ1 Θ2 Θ3 w' w
@@ -246,57 +463,14 @@ Proof.
     clear_app_suffix; eauto 6 with inst_weakening.
   admit.
 Admitted.
-
-Lemma bexpr_subst_open_comm : forall x v1 e v2
-  , lc_bexpr v1 → x `notin` fv_bexpr v2
-  → ([v1 /' x] e) ^^' v2 = [v1 /' x] e ^^' v2.
-Proof.
-  intros.
-  rewrite subst_bexpr_open_bexpr_wrt_bexpr.
-  rewrite (subst_bexpr_fresh_eq v2).
-  all: easy.
-Qed.
-
-Lemma aexpr_subst_open_comm : forall x v1 e v2
-  , lc_aexpr v1 → x `notin` fv_aexpr v2
-  → ([v1 /′ x] e) ^^′ v2 = [v1 /′ x] e ^^′ v2.
-Proof.
-  intros.
-  rewrite subst_aexpr_open_aexpr_wrt_aexpr.
-  rewrite (subst_aexpr_fresh_eq v2).
-  all: easy.
-Qed.
-
-Lemma worklist_subst_open_comm : forall x v1 Γ v2
-  , lc_aexpr v1 → x `notin` fv_aexpr v2
-  → subst_worklist v1 x Γ $′ v2 = subst_worklist v1 x (Γ $′ v2).
-Proof.
-  intros.
-  rewrite subst_worklist_open_worklist_wrt_aexpr.
-  rewrite (subst_aexpr_fresh_eq v2).
-  all: easy.
-Qed.
-
-Lemma dworklist_subst_open_comm : forall x v1 Γ v2
-  , lc_bexpr v1 → x `notin` fv_bexpr v2
-  → subst_dworklist v1 x Γ $ v2 = subst_dworklist v1 x (Γ $ v2).
-Proof.
-  intros.
-  rewrite subst_dworklist_open_dworklist_wrt_bexpr.
-  rewrite (subst_bexpr_fresh_eq v2).
-  all: easy.
-Qed.
-
-
-Lemma bexpr_subst_open_var_comm : forall x1 x2 v e
-  , lc_bexpr v → x1 <> x2
-  → ([v /' x1] e) ^`' x2 = [v /' x1] e ^`' x2.
-Proof.
-  intros. rewrite bexpr_subst_open_comm; auto.
-Qed.
+ *)
 
 Hint Rewrite bexpr_subst_open_comm aexpr_subst_open_comm : ln.
+Hint Rewrite bbody_subst_open_comm abody_subst_open_comm : ln.
+(*
 Hint Rewrite worklist_subst_open_comm dworklist_subst_open_comm : ln.
+*)
+
 Hint Extern 4 => progress autorewrite with ln : ln.
 
 Lemma notin_ss_sse : forall e x x' s,
@@ -309,25 +483,57 @@ Proof.
     + eapply IHs. destruct a; simpl in H. auto. auto.
 Qed.
 
-Lemma bind_notin_inst : forall x ex A e Θ,
-    ex : A ≔ e ∈ Θ → x `notin` fv_ss_inst Θ → x `notin` fv_bexpr e.
+Lemma fresh_dom_fresh_expr_l : forall x Γ e1 e2 d A
+  , busub Γ e1 e2 d A
+    → x `notin` bctx_dom Γ → x `notin` fv_bexpr e1.
+Proof.
+  induction 1; simpl; intros; auto 1.
+Admitted.
+
+Lemma notin_dom_notin_inst : forall x ex e Θ A,
+    ex : A ≔ e ∈ Θ → x `notin` dom Θ → wf_ss Θ → x `notin` fv_bexpr e.
 Proof.
   induction Θ; intros.
   - inversion H.
-  - destruct a.
-    destruct s; unfold fv_ss_inst in H0; simpl in H0;
-      inversion H; try inversion H1; subst; auto.
+  - destruct a. destruct H.
+    + inversion H; subst. simpl in *.
+      inversion H1; subst.
+      eauto using fresh_dom_fresh_expr_l, fresh_dom_fresh_ctx.
+    + simpl in H0; inversion H1; eauto 2.
 Qed.
 
-Hint Resolve bind_notin_inst : atoms.
+Lemma notin_ss_notin_inst : forall x ex e Θ A,
+    ex : A ≔ e ∈ Θ → x `notin` fv_ss Θ → x `notin` fv_bexpr e.
+Proof.
+  induction Θ; intros.
+  - inversion H.
+  - destruct a. destruct H.
+    + inversion H; subst; simpl in *; auto.
+    + simpl in H0; eauto.
+Qed.
+
+
+
+Lemma fresh_dom_r : forall x Θ1 Γ' Γ Θ2
+  , Θ1 ⊩ Γ' ⟿ Γ ⫣ Θ2
+  → x `notin` dom Θ1
+  → x `notin` wl_dom Γ'
+  → x `notin` dom Θ2.
+Proof.
+  induction 1; simpl; auto.
+Qed.
 
 Lemma inst_e_rename : forall Θ e' e x x'
-  , Θ ⊩ e' ⇝ e → x `notin` fv_ss_inst Θ
+  , Θ ⊩ e' ⇝ e → x `notin` dom Θ
   → Θ ⊩ [`′ x' /′ x] e' ⇝ [`' x' /' x] e.
 Proof.
-  intros; induction H; simpl; auto.
+  intros.
+  induction H using inste_mut with
+    (P0 := fun Θ b' b _ => x `notin` dom Θ
+      → inst_body Θ (subst_abody `′x' x b') (subst_bbody`' x' x b));
+    simpl; auto.
   - unfold eq_dec. destruct (EqDec_eq_of_X x0 x); auto.
-  - rewrite subst_bexpr_fresh_eq; eauto with atoms.
+  - rewrite subst_bexpr_fresh_eq; eauto using notin_dom_notin_inst.
   - apply inste_abs  with (add x L); eauto with ln.
   - apply inste_bind with (add x L); eauto with ln.
   - apply inste_pi   with (add x L); eauto with ln.
@@ -336,8 +542,17 @@ Qed.
 
 Hint Resolve inst_e_rename : ln.
 
+Lemma inst_body_rename : forall Θ b' b x x'
+  , inst_body Θ b' b → x `notin` dom Θ
+  → inst_body Θ (subst_abody `′x' x b') (subst_bbody `'x' x b).
+Proof.
+  intros.
+  induction H; simpl.
+  eauto using inst_e_rename.
+Qed.
+
 Lemma inst_ob_rename : forall Θ ob' ob x x'
-  , Θ ⊩ ob' ⇝? ob → x `notin` fv_ss_inst Θ
+  , Θ ⊩ ob' ⇝? ob → x `notin` dom Θ
   → Θ ⊩ subst_obind (`′ x') x ob' ⇝? subst_obindd (`' x') x ob.
 Proof.
   intros.
@@ -346,397 +561,25 @@ Qed.
 
 Hint Resolve inst_ob_rename : ln.
 
-Lemma inst_eq_ex_in : forall Θ1 Θ2 x A e,
-  x : A ≔ e ∈ Θ1 → inst_set Θ1 = inst_set Θ2 → exists A', x : A' ≔ e ∈ Θ2.
-Proof.
-  induction Θ1; simpl; intros.
-  - inversion H.
-  - destruct H; destruct a; destruct s; try (inversion H; subst).
-    + induction Θ2.
-      * inversion H0.
-      * destruct a. simpl in H0. destruct s.
-        -- destruct IHΘ2; eauto.
-        -- inversion H0; eauto.
-        -- inversion H0.
-    + eauto.
-    + induction Θ2.
-      * inversion H0.
-      * destruct a0. simpl in H0. destruct s.
-        -- destruct IHΘ2; eauto.
-        -- inversion H0; edestruct IHΘ1; eauto.
-        -- inversion H0.
-    + induction Θ2.
-      * inversion H0.
-      * destruct a0. simpl in H0. destruct s.
-        -- destruct IHΘ2; eauto.
-        -- inversion H0.
-        -- inversion H0; edestruct IHΘ1; eauto.
-Qed.
-
-Lemma inst_eq_k_in : forall Θ1 Θ2 x k,
-  x ≔ ⧼ k ⧽ ∈ Θ1 → inst_set Θ1 = inst_set Θ2 → x ≔ ⧼ k ⧽ ∈ Θ2.
-Proof.
-  induction Θ1; simpl; intros.
-  - inversion H.
-  - destruct H; destruct a; destruct s; try (inversion H; subst).
-    + induction Θ2.
-      * inversion H0.
-      * destruct a. simpl in H0. destruct s.
-        -- auto.
-        -- inversion H0.
-        -- inversion H0. auto.
-    + auto.
-    + induction Θ2.
-      * inversion H0.
-      * destruct a0. simpl in H0. destruct s.
-        -- auto.
-        -- inversion H0. auto.
-        -- inversion H0.
-    + induction Θ2.
-      * inversion H0.
-      * destruct a0. simpl in H0. destruct s.
-        -- auto.
-        -- inversion H0.
-        -- inversion H0. auto.
-Qed.
-
-Lemma inst_eq_inst_e : forall Θ1 e' e
-  , Θ1 ⊩ e' ⇝ e → forall Θ2
-  , wf_ss Θ2 → inst_set Θ1 = inst_set Θ2
-  → Θ2 ⊩ e' ⇝ e.
-Proof.
-  induction 1; simpl; intros; eauto 4.
-  - apply inst_eq_ex_in with (Θ2 := Θ2) in H0; auto.
-    destruct H0. eauto.
-  - apply inst_eq_k_in with (Θ2 := Θ2) in H0; auto.
-Qed.
-
-#[local]
-Hint Resolve inst_eq_inst_e : inst_eq.
-
-Lemma inst_eq_inst_ob : forall Θ1 ob' ob
-  , Θ1 ⊩ ob' ⇝? ob → forall Θ2
-  , wf_ss Θ2 → inst_set Θ1 = inst_set Θ2
-  → Θ2 ⊩ ob' ⇝? ob.
-Proof.
-  destruct 1; simpl; intros; eauto with inst_eq.
-Qed.
-
-#[local]
-Hint Resolve inst_eq_inst_ob : inst_eq.
-
-Lemma inst_set_app_distr : forall Θ2 Θ1,
-    inst_set (Θ1 ;; Θ2) = inst_set Θ1 ;; inst_set Θ2.
-Proof.
-  env induction Θ2; simpl; intros.
-  - reflexivity.
-  - destruct a; auto.
-Qed.
-
-Lemma subst_ss_app_distr : forall Θ2 Θ1 x e,
-  subst_ss e x (Θ1 ;; Θ2) = subst_ss e x Θ1 ;; subst_ss e x Θ2.
-Proof.
-  env induction Θ2; simpl; intros; auto.
-Qed.
-
-Lemma inst_eq_app : forall Θ1 Θ2 Θ3 Θ4
-  , inst_set Θ1 = inst_set Θ2 → inst_set Θ3 = inst_set Θ4
-  → inst_set (Θ1 ;; Θ3) = inst_set (Θ2 ;; Θ4).
-Proof.
-  intros.
-  repeat rewrite inst_set_app_distr. congruence.
-Qed.
-
-#[local]
-Hint Resolve inst_eq_app : inst_eq.
-
-Lemma fv_ss_inst_app_union : forall Θ1 Θ2,
-    fv_inst_set (Θ1 ;; Θ2) [=] fv_inst_set Θ1 `union` fv_inst_set Θ2.
-Proof.
-  intros. env induction Θ2; simpl; fsetdec.
-Qed.
-
-Lemma notin_equal : forall (s1 s2 : atoms) x,
-    s1 [=] s2 → x `notin` s1 → x `notin` s2.
-Proof.
-  fsetdec.
-Qed.
-
-Lemma notin_inst_set_app : forall Θ1 Θ2 x
-  , x `notin` fv_inst_set (Θ1 ;; Θ2)
-  → x `notin` fv_inst_set Θ1 ∧ x `notin` fv_inst_set Θ2.
-Proof.
-  split.
-  - eapply notin_union_1, notin_equal.
-    apply fv_ss_inst_app_union. auto.
-  - eapply notin_union_2, notin_equal.
-    apply fv_ss_inst_app_union. auto.
-Qed.
-
-Lemma notin_ss_inst_app : forall Θ1 Θ2 x
-  , x `notin` fv_ss_inst (Θ1 ;; Θ2)
-  → x `notin` fv_ss_inst Θ1 ∧ x `notin` fv_ss_inst Θ2.
-Proof.
-  unfold fv_ss_inst.
-  intros. rewrite inst_set_app_distr in H.
-  auto using notin_inst_set_app.
-Qed.
-
-Import AtomSetProperties.
-
-Lemma fv_inst_set_app_notin : forall Θ1 Θ2 x
-  , x `notin` fv_inst_set Θ1 → x `notin` fv_inst_set Θ2
-  → x `notin` fv_inst_set (Θ1 ;; Θ2).
-Proof.
-  intros.
-  eapply notin_equal. apply equal_sym.
-  apply fv_ss_inst_app_union.
-  auto.
-Qed.
-
-Lemma fv_ss_inst_app_notin : forall Θ1 Θ2 x
-  , x `notin` fv_ss_inst Θ1 → x `notin` fv_ss_inst Θ2
-  → x `notin` fv_ss_inst (Θ1 ;; Θ2).
-Proof.
-  unfold fv_ss_inst. intros.
-  rewrite inst_set_app_distr.
-  auto using fv_inst_set_app_notin.
-Qed.
-
-Lemma fv_ss_inst_app_notin' : forall Θ1 Θ2 x
-  , x `notin` fv_inst_set (inst_set Θ1)
-  → x `notin` fv_inst_set (inst_set Θ2)
-  → x `notin` fv_inst_set (inst_set (Θ1 ;; Θ2)).
-Proof.
-  apply fv_ss_inst_app_notin.
-Qed.
-
-Lemma dom_app_union : forall A (Θ1 Θ2 : list (var * A)),
-    dom (Θ1 ;; Θ2) [=] dom Θ1 `union` dom Θ2.
-Proof.
-  env induction Θ2; simpl; fsetdec.
-Qed.
-
-Hint Resolve fv_ss_inst_app_notin fv_ss_inst_app_notin' : inst_notin.
-
-Lemma notin_dom_app : forall A (Θ1 Θ2 : list (var * A)) x,
-    x `notin` dom (Θ1 ;; Θ2) → x `notin` dom Θ1 ∧ x `notin` dom Θ2.
-Proof.
-  intros. apply (notin_equal _ (dom Θ1 `union` dom Θ2)) in H.
-  - fsetdec.
-  - apply dom_app_union.
-Qed.
-
-Lemma dom_app_notin : forall A (Θ1 Θ2 : list (var * A)) x,
-    x `notin` dom Θ1 → x `notin` dom Θ2 → x `notin` dom (Θ1 ;; Θ2).
-Proof.
-  intros. eapply notin_equal.
-  - apply equal_sym. apply dom_app_union.
-  - auto.
-Qed.
-
-Hint Resolve dom_app_notin : inst_notin.
-
-Lemma dom_subst_equal : forall e x Θ,
-    dom Θ [=] dom (subst_ss e x Θ).
-Proof.
-  env induction Θ; simpl; fsetdec.
-Qed.
-
-Lemma notin_dom_subst : forall e x Θ x',
-    x' `notin` dom Θ <-> x' `notin` dom (subst_ss e x Θ).
-Proof.
-  split; intros.
-  - eapply notin_equal. apply dom_subst_equal. assumption.
-  - eapply notin_equal. apply equal_sym, dom_subst_equal. eassumption.
-Qed.
-
-#[local]
-Hint Resolve notin_dom_subst : inst_notin.
-
-Lemma fv_ss_notin : forall Θ1 Θ2 x,
-    x `notin` fv_ss Θ1 → x `notin` fv_ss Θ2 → x `notin` fv_ss (Θ1 ;; Θ2).
-Proof.
-  env induction Θ2; simpl; intros.
-  - fsetdec.
-  - apply notin_union; auto.
-Qed.
-
-#[local]
-Hint Resolve fv_ss_notin : inst_notin.
-
-Ltac destruct_notin_ext_impl :=
-  destruct_notin;
-  let F1 := fresh "Fr" in
-  let F2 := fresh "Fr" in
-  match goal with
-  | H : _ `notin` fv_ss_inst (_ ;; _) |- _ =>
-      apply notin_ss_inst_app in H as [F1 F2]
-  | H : _ `notin` fv_inst_set (inst_set (_ ;; _)) |- _ =>
-      apply notin_ss_inst_app in H as [F1 F2]
-  | H : _ `notin` dom (_ ;; _) |- _ =>
-      apply notin_dom_app in H as [F1 F2]
-  | H : _ `notin` dom (subst_ss _ _ _) |- _ =>
-      apply notin_dom_subst in H
-  end
-.
-
-Ltac destruct_notin_ext :=
-  repeat progress destruct_notin_ext_impl.
-
-Lemma notin_ss_prefix : forall Θ1 Θ2 x,
-    x `notin` fv_ss (Θ1 ;; Θ2) → x `notin` fv_ss Θ1.
-Proof.
-  induction Θ2; simpl; intros; auto.
-  destruct a; auto.
-Qed.
-
-#[local]
-Hint Resolve notin_ss_prefix : inst_notin.
-
-#[local]
- Hint Extern 4 (_ `notin` fv_ss_inst _) =>
-  inst_cofinites_with_new; conclude_ss_extend; simplify_list_eq;
-  destruct_notin_ext; eauto with inst_notin : rename_impl.
-
-
-Ltac rev_subst_gather_atoms :=
-  let L0 := gather_atoms_with (fun x : atom => {{ x }}) in
-  let L1 := gather_atoms_with (fun x : atoms => x) in
-  let L2 := gather_atoms_with (fun x : bexpr => fv_bexpr x) in
-  let L3 := gather_atoms_with (fun x : aexpr => fv_aexpr x) in
-  let L4 := gather_atoms_with (fun x : subst_set => fv_ss x) in
-  let L5 := gather_atoms_with (fun x : dworklist => fv_dworklist x) in
-  let L6 := gather_atoms_with (fun x : worklist => fv_worklist x) in
-  constr:(L0 `union` L1 `union` L2 `union` L3 `union` L4 `union` L5 `union` L6).
-
-Tactic Notation "pick" "fresh" ident(x) "for" "all" :=
-  let L  := rev_subst_gather_atoms in
-  pick fresh x for L.
-
-Lemma open_aexpr_fresh_rec : forall e n x v
-  , x `notin` fv_aexpr (open_aexpr_wrt_aexpr_rec n v e)
-  → x `notin` fv_aexpr e.
-Proof.
-  induction e; simpl; intros; eauto 4.
-Qed.
-
-Lemma open_aexpr_fresh : forall e x v,
-  x `notin` fv_aexpr (e ^^′ v) → x `notin` fv_aexpr e.
-Proof.
-  intros. eauto using open_aexpr_fresh_rec.
-Qed.
-
-Lemma open_bexpr_fresh_rec : forall e n x v
-  , x `notin` fv_bexpr (open_bexpr_wrt_bexpr_rec n v e)
-  → x `notin` fv_bexpr e.
-Proof.
-  induction e; simpl; intros; eauto 4.
-Qed.
-
-Lemma open_bexpr_fresh : forall e x v,
-  x `notin` fv_bexpr (e ^^' v) → x `notin` fv_bexpr e.
-Proof.
-  intros. eauto using open_bexpr_fresh_rec.
-Qed.
-
-Lemma fresh_open_aexpr_rec : forall e n x v
-  , x `notin` fv_aexpr e → x `notin` fv_aexpr v
-  → x `notin` fv_aexpr (open_aexpr_wrt_aexpr_rec n v e).
-Proof.
-  induction e; simpl; intros; eauto 4.
-  - destruct (lt_eq_lt_dec n n0); try destruct s; auto.
-Qed.
-
-Lemma fresh_open_aexpr : forall e x v
-  , x `notin` fv_aexpr e → x `notin` fv_aexpr v
-  → x `notin` fv_aexpr (e ^^′ v).
-Proof.
-  intros. eauto using fresh_open_aexpr_rec.
-Qed.
-
-Lemma fresh_open_bexpr_rec : forall e n x v
-  , x `notin` fv_bexpr e → x `notin` fv_bexpr v
-  → x `notin` fv_bexpr (open_bexpr_wrt_bexpr_rec n v e).
-Proof.
-  induction e; simpl; intros; eauto 4.
-  - destruct (lt_eq_lt_dec n n0); try destruct s; auto.
-Qed.
-
-Lemma fresh_open_bexpr : forall e x v
-  , x `notin` fv_bexpr e → x `notin` fv_bexpr v
-  → x `notin` fv_bexpr (e ^^' v).
-Proof.
-  intros. eauto using fresh_open_bexpr_rec.
-Qed.
-
 Lemma inst_e_fresh : forall Θ e' e x,
     Θ ⊩ e' ⇝ e → x `notin` fv_bexpr e → x `notin` fv_aexpr e'.
 Proof.
-  induction 1; simpl; intros;
-    solve [ eauto 3
+  (*induction 1; simpl; intros;
+    try solve [ eauto 3
           | pick fresh x' for all;
-            eauto 6 using open_aexpr_fresh, fresh_open_bexpr].
-Qed.
+            eauto 6 using open_aexpr_fv_aexpr_notin, fv_bexpr_open_bexpr_notin]. *)
+  (* mut-ind with body *)
+Admitted.
 
 Lemma fresh_inst_e : forall Θ e' e x,
     Θ ⊩ e' ⇝ e → x `notin` fv_aexpr e' → x `notin` fv_bexpr e.
 Proof.
+  (* mut_ind with body *)
 Admitted.
 
-Lemma inst_wl_rename : forall Θ Θ' Γ' Γ x x'
-  , Θ ⊩ Γ' ⟿ Γ ⫣ Θ' → x `notin` fv_ss_inst Θ'
-    → Θ ⊩ subst_worklist (`′ x') x Γ' ⟿ subst_dworklist (`' x') x Γ ⫣
-        Θ'.
-Proof.
-  intros * H.
-  pattern Θ, Γ', Γ, Θ', H.
-  apply wlinst_mut with
-    (P := fun Θ w' w Θ' (_ : Θ ⊩ w' ⇝′ w ⫣ Θ')
-      => x `notin` fv_ss_inst Θ' →
-      Θ ⊩ subst_work (`′ x') x w' ⇝′ subst_dwork (`' x') x w ⫣ Θ');
-    simpl; intros; eauto 6 with ln.
-  - apply instw_infer with (add x L); eauto with rename_impl ln.
-  - apply instw_iapp  with (add x L); eauto with rename_impl ln.
-  - apply instw_red   with (add x L); eauto with rename_impl ln.
-  - eauto with rename_impl.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
-
-Lemma notin_open_bexpr_rec : forall x v e n
-  , x `notin` fv_bexpr v → x `notin` fv_bexpr e
-  → x `notin` fv_bexpr (open_bexpr_wrt_bexpr_rec n v e).
-Proof.
-  induction e; simpl; intros; auto.
-  - destruct (lt_eq_lt_dec n n0); auto.
-    destruct s; auto.
-Qed.
-
-Lemma notin_open_bexpr : forall x v e
-  , x `notin` fv_bexpr v → x `notin` fv_bexpr e
-  → x `notin` fv_bexpr (e ^^' v).
-Proof.
-  intros. now eapply notin_open_bexpr_rec.
-Qed.
-
-Lemma notin_close_bexpr_rec : forall x e n,
-    x `notin` fv_bexpr (close_bexpr_wrt_bexpr_rec n x e).
-Proof.
-  induction e; simpl; intros; auto.
-  - destruct (lt_ge_dec n n0); auto.
-  - unfold eq_dec. destruct EqDec_eq_of_X; auto.
-Qed.
-
-Lemma notin_close_bexpr : forall x e,
-    x `notin` fv_bexpr (close_bexpr_wrt_bexpr x e).
-Proof.
-  intros. apply notin_close_bexpr_rec.
-Qed.
-
-Hint Resolve notin_close_bexpr : atoms.
-Hint Resolve notin_open_bexpr : atoms.
+Hint Resolve fv_bexpr_open_bexpr_notin : atoms.
+Hint Resolve close_bexpr_notin : atoms.
+Hint Resolve bbody_close_notin : atoms.
 
 Hint Resolve inst_ae_lc : lc.
 Hint Resolve inst_e_lc : lc.
@@ -745,32 +588,8 @@ Hint Rewrite close_bexpr_wrt_bexpr_open_bexpr_wrt_bexpr : ln.
 Hint Rewrite <- subst_bexpr_close_bexpr_wrt_bexpr : ln.
 Hint Rewrite open_bexpr_wrt_bexpr_close_bexpr_wrt_bexpr : ln.
 
-Ltac e_rev_subst_apply_ih :=
-  match goal with
-  | IH : forall _ _ _, _ → _ ⊩ [?v /′ ?x] ?e ^`′ _ ⇝ _ → _
-  , H  : _ ⊩ ([?v /′ ?x] ?e) ^`′ _ ⇝ ?e1 ^`' _ |- _ =>
-    let e1' := fresh e1 in
-    let E := fresh "E" in
-    let H' := fresh "H" in
-    rewrite aexpr_subst_open_comm in H; eauto 3 with lc;
-    apply IH in H as (e1' & E & H'); auto with atoms
-  | IH : forall _ _, _ → _ ⊩ [?v /′ ?x] ?e ⇝ _ → _
-  , H  : _ ⊩ [?v /′ ?x] ?e ⇝ ?e1 |- _ =>
-    let e1' := fresh e1 in
-    let E := fresh "E" in
-    let H' := fresh "H" in
-    apply IH in H as (e1' & E & H'); auto with atoms
-  end
-.
-
-
-Lemma bexpr_open_r_close_l : forall e1 e2 x,
-    x `notin` fv_bexpr e2 → e1 = e2 ^`' x → e1 \`' x = e2.
-Proof.
-  intros * Fr H.
-  assert (e1 \`' x = e2 ^`' x \`' x) by now rewrite H.
-  now rewrite close_bexpr_wrt_bexpr_open_bexpr_wrt_bexpr in H0.
-Qed.
+Hint Rewrite close_bbody_wrt_bexpr_open_bbody_wrt_bexpr : ln.
+Hint Rewrite open_bbody_wrt_bexpr_close_bbody_wrt_bexpr : ln.
 
 Ltac pick_different x :=
   match goal with
@@ -798,84 +617,130 @@ Ltac prepare_rename_impl :=
       | _ => let x1 := pick_different x in
             rewrite (subst_aexpr_intro x1)
       end
+  | |- context [open_bbody_wrt_bexpr ?b `' ?x] =>
+      lazymatch goal with
+      | |- context [open_bbody_wrt_bexpr (open_bbody_wrt_bexpr b `'x) `'?x'] => fail
+      | |- context [subst_bbody `'?x' x (open_bbody_wrt_bexpr b `'x)] => fail
+      | _ => let x1 := pick_different x in rewrite (subst_bbody_intro x1)
+      end
+  | |- context [open_abody_wrt_aexpr ?b `′ ?x] =>
+      lazymatch goal with
+      | |- context [open_abody_wrt_aexpr (open_abody_wrt_aexpr b `′x) `′?x'] => fail
+      | |- context [subst_abody `′?x' x (open_abody_wrt_aexpr b `′x)] => fail
+      | _ => let x1 := pick_different x in rewrite (subst_abody_intro x1)
+      end
   end; auto 2 with atoms
 .
 
 Ltac prepare_rename := repeat prepare_rename_impl.
 
-Lemma inst_e_rev_subst' : forall v' v x e'
-  , lc_aexpr e' → forall e0 Θ,
-      x `notin` (fv_aexpr v' `union` fv_ss_inst Θ)
-  → Θ ⊩ [v' /′ x] e' ⇝ e0 → Θ ⊩ v' ⇝ v
+Scheme aexpr_lc_mut := Induction for lc_aexpr Sort Prop
+  with abody_lc_mut := Induction for lc_abody Sort Prop.
+
+Ltac e_rev_subst_apply_ih :=
+  match goal with
+  | IH : forall _ (e0 : bexpr), _ ⊩ [?v /′ ?x] ?e ^`′ _ ⇝ _ → _
+  , H  : _ ⊩ ([?v /′ ?x] ?e) ^`′ _ ⇝ ?e1 ^`' _ |- _ =>
+    let e1' := fresh e1 in
+    let E := fresh "E" in
+    let H' := fresh "H" in
+    rewrite aexpr_subst_open_comm in H; eauto 3 with lc;
+    apply IH in H as (e1' & E & H'); auto with atoms
+  | IH : forall _, _ ⊩ [?v /′ ?x] ?e ⇝ _ → _
+  , H  : _ ⊩ [?v /′ ?x] ?e ⇝ ?e1 |- _ =>
+    let e1' := fresh e1 in
+    let E := fresh "E" in
+    let H' := fresh "H" in
+    apply IH in H as (e1' & E & H'); auto with atoms
+  | IH : forall _ (b0 : bbody), inst_body _ (subst_abody ?v ?x (open_abody_wrt_aexpr ?b' _)) _ → _
+  , H : inst_body _ (open_abody_wrt_aexpr (subst_abody ?v ?x ?b') _) (open_bbody_wrt_bexpr ?b1 _) |- _ =>
+  let b1' := fresh b1 in
+  let E := fresh "E" in
+  let H' := fresh "H" in
+  rewrite abody_subst_open_comm in H; eauto 3 with lc;
+  apply IH in H as (b1' & E & H'); auto with atoms
+  end
+.
+
+Lemma inst_e_rev_subst' : forall v' v x Θ e'
+  , lc_aexpr e'
+  → x `notin` (fv_aexpr v' `union` fv_ss Θ) → Θ ⊩ v' ⇝ v
+  → forall e0
+  , Θ ⊩ [v' /′ x] e' ⇝ e0
   → exists e, [v /' x] e = e0 ∧ Θ ⊩ e' ⇝ e.
 Proof.
-  intros * Lc.
-  induction Lc; simpl; intros * Fr He Hv;
-    lazymatch type of He with
+  intros * Lc Fr InstV.
+  induction Lc using aexpr_lc_mut with
+    (P0 := fun b' _ => forall b0
+      , inst_body Θ (subst_abody v' x b') b0
+      → exists b, subst_bbody v x b = b0 ∧ inst_body Θ b' b);
+
+  intros * Inst; simpl in *
+    ; lazymatch type of Inst with
       (* only if it's a variable it doesn't invert the hypo *)
     | _ ⊩ (if _ then _ else _) ⇝ _ => idtac
-    | _ ⊩ ⧼ ?k ⧽′ ⇝ _ => destruct k; inversion He; subst
-    | _ => inversion He; subst; simpl in Fr;
+    | _ ⊩ ⧼ ?k ⧽′ ⇝ _ => destruct k; inversion Inst; subst
+    | _ => inversion Inst; subst; simpl in Fr;
           (* instantiate cofinite for those with binders *)
-          inst_cofinites_by rev_subst_gather_atoms;
+          inst_cofinites_by gather_atoms_transfer;
           repeat e_rev_subst_apply_ih
-    end.
+    end; subst.
   - exists (`' x0). simpl.
-    unfold eq_dec in *. destruct (EqDec_eq_of_X x0 x).
-    + assert (v = e0) by (eapply inst_e_det with (Θ := Θ); eauto).
-      eauto.
-    + inversion He. now subst.
+    unfold eq_dec in *. destruct (EqDec_eq_of_X x0 x); subst.
+    + assert (v = e0) by
+        (eapply inst_e_det with (Θ := Θ); eauto with inst_wf_ss).
+      eauto with inst_wf_ss.
+    + inversion Inst. now subst.
   - exists ⋆'; eauto.
   - exists ◻'; eauto.
   - exists ⧼ k ⧽'; eauto.
-  - exists e0. eauto 4 with lngen atoms.
+  - exists e0. eauto 4 using notin_ss_notin_inst with lngen atoms.
   - exists (be_num n); eauto.
   - exists be_int; eauto.
-  - exists be_bot; eauto.
-  - exists (be_app f0 a0); subst; auto.
-  - exists (be_abs (e0 \`' x0)). split.
+  - exists (be_bot A1); eauto.
+  - exists (be_app f0 a0); auto.
+  - exists (be_abs A1 (close_bbody_wrt_bexpr x0 b1)). split.
     + simpl. f_equal.
-      rewrite subst_bexpr_close_bexpr_wrt_bexpr; eauto with lc.
-      apply bexpr_open_r_close_l; auto.
-    + apply inste_abs with L; intros.
-      prepare_rename.
-      apply inst_e_rename; autorewrite with ln; auto.
-      admit.
+      rewrite subst_bbody_close_bbody_wrt_bexpr; eauto with lc.
+      apply bbody_open_r_close_l; auto.
+    + apply inste_abs with L; intros; auto.
+      * prepare_rename.
+        apply inst_body_rename; autorewrite with ln; auto.
   - exists (be_pi A1 (B1 \`' x0)). split.
-    + simpl. f_equal. assumption.
+    + simpl. f_equal.
       rewrite subst_bexpr_close_bexpr_wrt_bexpr; eauto with lc.
       apply bexpr_open_r_close_l; auto.
     + apply inste_pi with L; intros; auto.
       prepare_rename; apply inst_e_rename;
         autorewrite with ln; auto.
-      admit.
-  - exists (be_bind (e0 \`' x0)). split.
+  - exists (be_bind A1 (close_bbody_wrt_bexpr x0 b1)). split.
     + simpl. f_equal.
-      rewrite subst_bexpr_close_bexpr_wrt_bexpr; eauto with lc.
-      apply bexpr_open_r_close_l; auto.
+      rewrite subst_bbody_close_bbody_wrt_bexpr; eauto with lc.
+      apply bbody_open_r_close_l; auto.
     + apply inste_bind with L; intros; auto.
-      prepare_rename. apply inst_e_rename; autorewrite with ln; auto.
-      admit.
+      * prepare_rename.
+        apply inst_body_rename; autorewrite with ln; auto.
   - exists (be_all A1 (B1 \`' x0)). split.
-    + simpl. f_equal. assumption.
+    + simpl. f_equal.
       rewrite subst_bexpr_close_bexpr_wrt_bexpr; eauto with lc.
       apply bexpr_open_r_close_l; auto.
     + apply inste_all with L; intros; auto.
       prepare_rename; apply inst_e_rename;
         autorewrite with ln; auto.
-      admit.
-  - exists (be_castup e0); subst; auto.
+  - exists (be_castup A1 e0); subst; auto.
   - exists (be_castdn e0); subst; auto.
   - exists (e0 ::' A1); subst; auto.
-Admitted.
+  - exists (bb_anno e1 A1). subst. auto.
+Qed.
 
 Lemma inst_e_rev_subst : forall e0 Θ v' v x e'
-  , x `notin` (fv_aexpr v' `union` fv_ss_inst Θ)
+  , x `notin` (fv_aexpr v' `union` fv_ss Θ)
   → Θ ⊩ v' ⇝ v → Θ ⊩ [v' /′ x] e' ⇝ e0
   → exists e, [v /' x] e = e0 ∧ Θ ⊩ e' ⇝ e.
 Proof.
 Admitted.
 
+(*
 Scheme wl_lc_mut := Induction for lc_worklist Sort Prop
   with  w_lc_mut := Induction for lc_work Sort Prop.
 
@@ -945,6 +810,8 @@ Ltac simplify_inst_notin :=
   unfold fv_ss_inst in *; simpl in *;
   destruct_notin_ext;
   autorewrite with inst_notin in *.
+
+
 
 Lemma inst_wl_rev_subst : forall Γ' e' e
   , lc_worklist Γ' → forall Γ0 x Θ Θ',

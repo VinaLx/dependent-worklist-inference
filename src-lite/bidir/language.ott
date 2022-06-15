@@ -166,6 +166,71 @@ mono e
 mono e : A
 
 defns
+StrongMonotype :: '' ::=
+
+defn
+smono A :: :: smono_btype :: 'sbmono_'
+by
+
+----------- :: kind
+smono k
+
+----------- :: var
+smono x
+
+------------- :: int
+smono int
+
+----------- :: lit
+smono n
+
+smono A
+----------------- :: bot
+smono bot : A
+
+smono e1
+smono e2
+----------------- :: app
+smono (e1 e2)
+
+smono A
+smono B
+---------------------- :: pi
+smono pi x : A . B
+
+smono e
+smono A
+smono B
+-------------------------- :: lambda
+smono lambda x : A . e : B
+
+smono e
+smono A
+smono B
+------------------------ :: bind
+smono bind x : A . e : B
+
+% smono e
+% smono A
+% ---------------------- :: mu
+% smono mu x : A . e
+
+smono e
+smono A
+---------------------- :: castup
+smono castup [A] e
+
+smono e
+---------------------- :: castdn
+smono castdn e
+
+smono e
+smono A
+---------------------- :: anno
+smono e : A
+
+
+defns
 Reduce :: '' ::=
 
 defn
@@ -227,7 +292,7 @@ by
 
 |=> G
 x # G
-G |- A => k
+G |- A <= k
 -------------- :: cons
 |=> G , x : A
 
@@ -280,23 +345,23 @@ G |- * <: * dir box
 --------------------- :: int
 G |- int <: int => *
 
-G |- A1 <: A2 => k
-G |- A2 <: A1 => k
+G |- A1 <: A2 <= k
+G |- A2 <: A1 <= k
 --------------------------------- :: bot
 G |- bot : A1 <: bot : A2 => A1
 
-G |- A1 <: A2 => k1
-G |- A2 <: A1 => k1
-G , x : A1 |- B1 <: B2 => k2
-G , x : A1 |- B2 <: B1 => k2
+G |- A1 <: A2 <= k1
+G |- A2 <: A1 <= k1
+G , x : A1 |- B1 <: B2 <= k2
+G , x : A1 |- B2 <: B1 <= k2
 G , x : A1 |- e1 <: e2 <= B1
 ------------------------------------------------------------------------- :: abs
 G |- lambda x : A1 . e1 : B1 <: lambda x : A2 . e2 : B2 => pi x : A1. B1
 
-G |- A1 => k1
-G |- A2 <: A1 => k1
-G , x : A1 |- B1 dir k2
-G , x : A2 |- B1 <: B2 dir k2
+G |- A1       <= k1
+G |- A2 <: A1 <= k1
+G , x : A1 |- B1       <= k2
+G , x : A2 |- B1 <: B2 <= k2
 ------------------------------------------- :: pi
 G |- pi x : A1. B1 <: pi x : A2. B2 dir k2
 
@@ -307,8 +372,8 @@ G |- t <= B
 -------------------------------- :: app
 G |- e1 t <: e2 t => [t / x] C
 
-G |- A1 <: A2 => k
-G |- A2 <: A1 => k
+G |- A1 <: A2 <= k
+G |- A2 <: A1 <= k
 G , x : A1 |- B1 <: B2 <= *
 G , x : A1 |- B2 <: B1 <= *
 G , x : A1 |- e1 <: e2 <= B1
@@ -323,47 +388,47 @@ G |- bind x : A1 . e1 : B1 <: bind x : A2. e2 : B2 => forall x : A1. B1
 % ------------------------------------ :: mu
 % G |- mu x : t. s <: mu x : t. s : t
 
-G |- A1 <: A2 => k
-G |- A2 <: A1 => k
+G |- A1 <: A2 <= k
+G |- A2 <: A1 <= k
 A1 --> B
 A2 --> B
 G |- e1 <: e2 <= B
 --------------------------------------- :: castup
 G |- castup [A1] e1 <: castup [A2] e2 => A1
 
-G |- B => k
+G |- B <= k
 G |- A -->> B
 G |- e1 <: e2 => A
 --------------------------------------- :: castdn
 G |- castdn e1 <: castdn e2 => B
 
 mono t
-G |- A => k
+G |- A <= k
 G |- t <= A
-G |- [t/x] B <: C => *
-G , x : A |- B => *
+G |- [t/x] B <: C <= *
+G , x : A |- B <= *
 ------------------------------- :: forall_l
 G |- forall x : A. B <: C => *
 
-G |- B => k
-G |- A => *
-G , x : B |- A <: C => *
+G |- B <= k
+G |- A <= *
+G , x : B |- A <: C <= *
 ------------------------------- :: forall_r
 G |- A <: forall x : B. C => *
 
-G |- A1 <: A2 => k
-G |- A2 <: A1 => k
-G , x : A1 |- B <: C => *
+G |- A1 <: A2 <= k
+G |- A2 <: A1 <= k
+G , x : A1 |- B <: C <= *
 ----------------------------------------------- :: forall
 G |- forall x : A1. B <: forall x : A2. C => *
 
 G |- e1 <: e2 <= A1
-G |- A1 <: A2 => k
-G |- A2 <: A1 => k
+G |- A1 <: A2 <= k
+G |- A2 <: A1 <= k
 ------------------------------ :: anno
 G |- e1 : A1 <: e2 : A2 => A1
 
 G |- e1 <: e2 => A
-G |- A  <: B  => k
+G |- A  <: B  <= k
 ------------------- :: sub
 G |- e1 <: e2 <= B
