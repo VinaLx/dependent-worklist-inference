@@ -108,7 +108,7 @@ Lemma infer_app_head_box : forall Γ A B C,
 Proof.
   intros. dependent induction H.
   - auto.
-  - apply IHinfer_app with (B1 := B) in H2; auto.
+  - apply IHinfer_app with (B := B) in H2; auto.
     apply head_bk_open in H2 as [|].
     + auto.
     + apply le_head_box_absurd in H0; [contradiction | auto].

@@ -188,23 +188,24 @@ Proof with eauto with bidir.
       fun Γ Γ' (_ : wf_context_elab Γ Γ') => wf_bcontext Γ');
     intros; try (constructor; auto; fail).
   - eauto.
-  - eapply bs_abs; eauto 6...
-  - eauto...
+  - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x; eauto...
+  - eapply bs_pi with (L:=L); eauto; intros; inst_cofinites_with x; eauto...
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
     + constructor; eapply busub_all_lc; eauto.
   - eapply bs_bind with (L:=L) (A1:=A1'); eauto; intros;
     inst_cofinites_with x; eauto...
-    eapply bs_sub; eauto. eapply bs_star_inf. eapply busub_context_is_wf; eauto.
-    eapply bs_sub; eauto. eapply bs_star_inf. eapply busub_context_is_wf; eauto.
     eapply usub_elab_keeps_notin_fv_erase with (e1':=(e1'0 ^^' `' x)) (e2':=(e2'0 ^^' `' x)); eauto.
     eapply usub_elab_keeps_notin_fv_erase with (e1':=(e1'0 ^^' `' x)) (e2':=(e2'0 ^^' `' x)); eauto.
   - eapply bs_castup with (B:=B'); eauto. admit. admit. admit.
   - eapply bs_anno; eauto... admit.
-  - eapply bs_forall_l with (t:=t'); eauto...
+  - eapply bs_forall_l with (t:=t') (L:=L); eauto...
     + eapply usub_elab_keeps_mono; eauto.
-  - econstructor; eauto.
-  - eapply bs_forall; eauto.
+    + intros. inst_cofinites_with x. eauto.
+  - eapply bs_forall_r with (L:=L); eauto.
+    intros. inst_cofinites_with x. auto.
+  - eapply bs_forall with (L:=L); eauto.
+    intros. inst_cofinites_with x. auto.
   - econstructor; eauto.
   - econstructor; eauto.
     + rewrite <- (wf_context_elab_same_dom Γ0 Γ'0); auto.
