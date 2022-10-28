@@ -406,33 +406,33 @@ Proof.
 Qed.
 
 
+Hint Resolve subst_expr_lc_expr : subst_.
+Hint Resolve subst_mono : subst_.
+Hint Resolve subst_expr_open_expr_wrt_expr : subst_.
+
+
 Lemma reduction_subst : forall e1 e2 x v,
   mono_type v → e1 ⟶ e2 → [v /_ x] e1 ⟶ [v /_ x] e2.
-Proof.
+Proof with auto with subst_.
   intros. induction H0; 
   assert (lc_expr v) by now apply monotype_lc.
   - simpl. constructor. apply subst_expr_lc_expr; auto. auto.
-  - simpl. replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2)).
-    + constructor. apply subst_expr_lc_expr; auto.
-      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-      apply subst_expr_lc_expr; auto.
-    + apply eq_sym. apply subst_expr_open_expr_wrt_expr. auto.
-  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_inst.
-    + apply subst_expr_lc_expr; auto.
-    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-    + apply subst_expr_lc_expr; auto.
-    + apply subst_mono; auto. 
+  - simpl. 
+    replace ([v /_ x] e1 ^^ e2) with (([v /_ x] e1) ^^ ([v /_ x]e2)).
+    + constructor; eauto...
+      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto... 
+      replace (λ_ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (λ_ A, e1 : B)) by auto...
+    + apply eq_sym. auto...  
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_inst; eauto...
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto...
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto...
     + rewrite subst_expr_open_expr_wrt_expr by auto. auto.
   - simpl. eauto.
-  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_cast_inst. 
-    + apply subst_expr_lc_expr; auto.
+  - simpl. replace ([v /_ x] e1 ^^ e) with (([v /_ x] e1) ^^ ([v /_ x]e)). eapply r_cast_inst; eauto...
+    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto... 
     + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-    + replace  (Λ [v /_ x] A, [v /_ x] e1 : [v /_ x] B) with ([v /_ x] (Λ A, e1 : B)) by auto. apply subst_expr_lc_expr; auto.
-    + apply subst_mono; auto. 
     + rewrite subst_expr_open_expr_wrt_expr by auto. auto.
-  - simpl. constructor; apply subst_expr_lc_expr; auto.
+  - simpl. eauto...
 Qed.
 
 
@@ -528,7 +528,6 @@ Proof.
   - pose proof H4 as H5.
     pick fresh x; specialize (H5 x Fr);
       apply usub_context_is_wf in H5; inversion H5; subst; eauto.
-
       - eapply s_sub with (e_all A2 B2) k_star.
     + pick fresh x and apply s_bind; eauto using narrowing_cons.
     + pick fresh x and apply s_forall; eauto using narrowing_cons.
@@ -613,20 +612,10 @@ Proof.
     apply (IHusub1 _ _ (eq_refl _) (eq_refl _) H0). 
 Qed.
 
-Ltac substitution_strategy :=
-  match goal with
-  | |- _ ⊢ e_app _ _ <: e_app _ _ : [_ /_ _] _ ^^ _ =>
-    (* [v / x] A ^^ e = [v / x] A ^^ [v / x] e *)
-    rewrite <- open_subst_eq
-  | |- _ ⊢ ([?v /_ ?x] ?e1) ^^ _ <: _ : _ =>
-    rewrite -> open_subst_eq
-  end
-.
 
 Lemma erase_subst_exchange : forall e1 x e2, 
   erase ([e2 /_ x] e1) = subst_eexpr (erase e2) x (erase e1).
-Proof.
-  
+Proof.  
   intro e1. pattern e1.
   eapply expr_ind_mut with 
     ( P0 := fun b => 
@@ -646,6 +635,7 @@ Proof.
   - simpl in *. rewrite H. auto.
 Qed.
 
+
 Lemma ctx_dom_subst_equal : forall Γ x v,
   ctx_dom (⟦v /_ x⟧ Γ) = ctx_dom Γ.
 Proof.
@@ -653,6 +643,8 @@ Proof.
   + reflexivity.
   + simpl. now rewrite (IHΓ x0 v).
 Qed.
+
+
 
 Lemma app_ctx_union_ctx_dim : forall Γ2 Γ1,
     ctx_dom (Γ1,,Γ2) [=] ctx_dom Γ1 `union` ctx_dom Γ2.
@@ -668,6 +660,7 @@ Proof.
       rewrite union_sym in H.  rewrite IHΓ2. auto.
 Qed.
 
+
 Lemma dom_insert_subset : forall Γ2 Γ1 x A,
     union (ctx_dom Γ2) (ctx_dom Γ1) [<=] ctx_dom (Γ1 , x : A ,, Γ2).
 Proof.
@@ -682,13 +675,16 @@ Proof.
     + now apply H0.
 Qed.
 
+Hint Resolve subst_mono : subst_.
+Hint Extern 1 (_ ⊢ _ <: _ : _ ) => rewrite_context : subst_.
+Hint Extern 1 (_ ⊢ _ <: _ : _ ) => rewrite_subst_open_var : subst_.
 
 
 Theorem substitution : forall Γ1 Γ2 x A B e1 e2 e3,
   Γ1 , x : B ,, Γ2 ⊢ e1 <: e2 : A ->
   Γ1 ⊢ e3 : B -> mono_type e3 ->
   Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A.
-Proof.
+Proof with auto with subst_.
   intros until e3. intros Hsub Hsub3 Hmono.
   remember (Γ1 , x : B ,, Γ2 ) as Γ.
   generalize dependent HeqΓ.
@@ -699,42 +695,36 @@ Proof.
         Γ1 ,, ⟦ e3 /_ x ⟧ Γ2 ⊢ [e3 /_ x] e1 <: [e3 /_ x] e2 : [e3 /_ x] A)
     (P0 := fun Γ => fun (_ : ⊢ Γ) =>
         forall x Γ2, Γ = Γ1 , x : B,, Γ2 -> ⊢ Γ1 ,, ⟦ e3 /_ x ⟧ Γ2);
-    simpl; intros; subst; auto; assert (lc_expr e3) by now apply monotype_lc.
+    simpl; intros; subst; auto; 
+    assert (lc_expr e3) by now apply monotype_lc.
    - destruct (x==x0); subst.
      + assert (A0=B) by (eapply binds_type_equal; eauto). subst.
        rewrite subst_expr_fresh_eq. replace (Γ1,, ⟦ e3 /_ x0 ⟧ Γ2) with (Γ1,, ⟦ e3 /_ x0 ⟧ Γ2,,ctx_nil) by auto.
        eapply weakening; eauto. eapply fresh_binded; eauto.
      + apply s_var; auto. eapply binds_subst; eauto. 
    - eauto.
-   - eapply s_abs with (L:=L `union` singleton x); eauto;
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
-   - eapply s_pi with (L:=L `union` singleton x); eauto;
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - eapply s_abs with (L:=L `union` singleton x); eauto...
+   - eapply s_pi with (L:=L `union` singleton x); eauto...
    - rewrite subst_expr_open_expr_wrt_expr; auto. econstructor; eauto.
      eapply subst_mono; eauto.
-   - eapply s_bind with (L:=L `union` singleton x `union` fv_eexpr (erase e3)); eauto;
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto...
-     rewrite erase_subst_exchange. rewrite fv_eexpr_subst_eexpr_upper. auto.
-     rewrite erase_subst_exchange. rewrite fv_eexpr_subst_eexpr_upper. auto.
+   - eapply s_bind with (L:=L `union` singleton x `union` fv_eexpr (erase e3)); eauto...
+     all : intros; rewrite_subst_open_var; rewrite erase_subst_exchange; rewrite fv_eexpr_subst_eexpr_upper; eauto.
    - econstructor; eauto; eapply reduction_subst; eauto;
      eapply usub_all_lc with (e1:=e3) (e2:=e3) (A:=B); eauto.
    - econstructor; eauto 3; eapply reduction_subst; eauto;
      eapply usub_all_lc with (e1:=e3) (e2:=e3) (A:=B); eauto.
-   - eapply s_forall_l with (L:=L `union` singleton x) (t:=[e3 /_ x] t); eauto;
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto.
-     now apply subst_mono.
-   - eapply s_forall_r with (L:=L `union` singleton x); eauto.
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
-   - eapply s_forall with (L:=L `union` singleton x); eauto.
-     intros; try rewrite_context; try rewrite_subst_open_var; eauto. 
+   - eapply s_forall_l with (L:=L `union` singleton x) (t:=[e3 /_ x] t); eauto...
+   - eapply s_forall_r with (L:=L `union` singleton x); eauto...
+   - eapply s_forall with (L:=L `union` singleton x); eauto...
    - eauto.
    
+   (* P0 *)
    - destruct Γ2; inversion H.
    - destruct Γ2; dependent destruction H1.
      + auto.
      + simpl. econstructor; eauto.
        rewrite app_ctx_union_ctx_dim. rewrite ctx_dom_subst_equal.
-       rewrite union_sym. rewrite dom_insert_subset. eapply n.
+       rewrite union_sym. rewrite dom_insert_subset. eauto.
 Qed.
 
 

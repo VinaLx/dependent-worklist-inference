@@ -188,23 +188,24 @@ Proof with eauto with bidir.
       fun Γ Γ' (_ : wf_context_elab Γ Γ') => wf_bcontext Γ');
     intros; try (constructor; auto; fail).
   - eauto.
-  - eapply bs_abs; eauto 6...
-  - eauto...
+  - eapply bs_abs with (L:=L); eauto; intros; inst_cofinites_with x; eauto...
+  - eapply bs_pi with (L:=L); eauto; intros; inst_cofinites_with x; eauto...
   - econstructor; eauto...
     + eapply usub_elab_keeps_mono; eauto.
     + constructor; eapply busub_all_lc; eauto.
   - eapply bs_bind with (L:=L) (A1:=A1'); eauto; intros;
     inst_cofinites_with x; eauto...
-    eapply bs_sub; eauto. eapply bs_star_inf. eapply busub_context_is_wf; eauto.
-    eapply bs_sub; eauto. eapply bs_star_inf. eapply busub_context_is_wf; eauto.
     eapply usub_elab_keeps_notin_fv_erase with (e1':=(e1'0 ^^' `' x)) (e2':=(e2'0 ^^' `' x)); eauto.
     eapply usub_elab_keeps_notin_fv_erase with (e1':=(e1'0 ^^' `' x)) (e2':=(e2'0 ^^' `' x)); eauto.
   - eapply bs_castup with (B:=B'); eauto. admit. admit. admit.
   - eapply bs_anno; eauto... admit.
-  - eapply bs_forall_l with (t:=t'); eauto...
+  - eapply bs_forall_l with (t:=t') (L:=L); eauto...
     + eapply usub_elab_keeps_mono; eauto.
-  - econstructor; eauto.
-  - eapply bs_forall; eauto.
+    + intros. inst_cofinites_with x. eauto.
+  - eapply bs_forall_r with (L:=L); eauto.
+    intros. inst_cofinites_with x. auto.
+  - eapply bs_forall with (L:=L); eauto.
+    intros. inst_cofinites_with x. auto.
   - econstructor; eauto.
   - econstructor; eauto.
     + rewrite <- (wf_context_elab_same_dom Γ0 Γ'0); auto.
@@ -423,10 +424,17 @@ Proof with auto with sound.
         end
       end
     )
-    ( P2 := fun Γ A B (pf : Γ ⊢ A ⟼ B) =>
-      to_decl_context Γ ⊢ to_decl A : ⋆ -> to_decl A ⟶ to_decl B \/
-      exists C, to_decl_context Γ ⊢ to_decl A <: to_decl C : ⋆ /\ to_decl C ⟶ to_decl B
-    );
+    (* cannot pattern match on pf, so pattern match on A instead,
+       be_all _ <=> gr_all
+       _ <=> gr_reduce
+    *)
+    ( P2 := fun Γ A B (pf : Γ ⊢ A ⟼ B) => 
+      match A with 
+      | be_all _ _ => to_decl_context Γ ⊢ to_decl A : ⋆ -> 
+                      exists C, to_decl_context Γ ⊢ to_decl A <: to_decl C : ⋆ /\ to_decl C ⟶ to_decl B
+      | _ => to_decl_context Γ ⊢ to_decl A : ⋆ -> to_decl A ⟶ to_decl B 
+      end 
+    ); 
     intros; try (constructor; auto; fail); simpl in *.
   - constructor; auto. now eapply to_decl_keeps_in_context.
   - eauto.
@@ -437,22 +445,20 @@ Proof with auto with sound.
   - eapply ott.s_pi with (L:=L); eauto;
     intros; inst_cofinites_with x; repeat rewrite <- to_decl_open_expr_wrt_var_distr; eauto.
   -  dependent destruction i.
-    + rewrite to_decl_open_expr_wrt_expr_distr.
-      eapply ott.s_app with (A:=to_decl B); eauto...
-    + simpl in H0. specialize (type_correctness_eall _ _ _ _ _ H0). intros. specialize (H3 H5).
-      rewrite to_decl_open_expr_wrt_expr_distr.
-      eapply ott.s_app with (A:=to_decl B); eauto...
-  - eapply ott.s_bind with (L:=L); eauto;
+    + rewrite to_decl_open_expr_wrt_expr_distr. 
+      eapply ott.s_app with (A:=to_decl B); eauto... 
+    + simpl in H0. specialize (type_correctness_eall _ _ _ _ _ H0). intros. specialize (H3 H5). eauto...
+      rewrite to_decl_open_expr_wrt_expr_distr. 
+      eapply ott.s_app with (A:=to_decl B); eauto... 
+  - eapply ott.s_bind with (L:=L); eauto; 
     intros; repeat rewrite <- to_decl_open_expr_wrt_var_distr; eauto...
     + eapply narrowing_cons; eauto.
     + eapply narrowing_cons; eauto.
   - eapply ott.s_castup; eauto...
   - dependent destruction g.
-    + eapply ott.s_castdn with (A:=to_decl e4); eauto...
-    + simpl in H4. specialize (type_correctness_eall _ _ _ _ _ H4). intros.
-      * destruct (H3 H5).
-        -- eapply ott.s_castdn with (A:=to_decl (be_all A0 B)); eauto.
-        -- destruct H6 as [D [Hsub Hred]]. eapply ott.s_castdn with (A:=to_decl D); eauto.
+    + eapply ott.s_castdn with (A:=to_decl e4); eauto... 
+    + simpl in *. specialize (type_correctness_eall _ _ _ _ _ H4).  
+      intros. destruct (H3 H5) as [D [Hsub Hred]]. econstructor. eauto. eauto. eapply ott.s_sub; eauto. 
   - eapply ott.s_forall_l with (L:=L) (t:=to_decl t); eauto...
     + rewrite <- to_decl_open_expr_wrt_expr_distr. auto.
     + intros. inst_cofinites_with x. rewrite <- to_decl_open_expr_wrt_var_distr. auto.
@@ -479,17 +485,18 @@ Proof with auto with sound.
       eapply eall_sub_open_sub; eauto...
 
   (* P2 *)
-  - left. auto...
-  - right. destruct H1.
-    + rewrite to_decl_open_expr_wrt_expr_distr.
-      simpl in H2. specialize (eall_open_var _ _ _ H2). intros.
-      destruct H1 as [L]. inst_cofinites_by (L `union` fv_expr (to_decl B)).
-      eapply eall_open_mono; eauto...
-    + exists (B ^^' t). split; auto.
-      rewrite to_decl_open_expr_wrt_expr_distr.
-      eapply  eall_sub_open; eauto...
-    + destruct H1 as [D [Hsub Hred]]. exists D. split; auto. simpl in *. rewrite to_decl_open_expr_wrt_expr_distr in Hsub.
-      eapply eall_sub_open_sub; eauto...
+  - destruct e0; auto... inversion b. 
+  - remember (B ^^' t) as t'; destruct t'; rewrite Heqt' in *;
+    assert (mono_type (to_decl t)) by (eapply to_decl_keeps_mono; eauto);
+    assert (to_decl_context G ⊢ to_decl (B ^^' t) : ⧼ k_star ⧽) by (
+      rewrite to_decl_open_expr_wrt_expr_distr;
+      eapply eall_open_mono; eauto
+    );
+    try (exists (B ^^' t); intuition; rewrite to_decl_open_expr_wrt_expr_distr; 
+        eapply eall_sub_open; eauto).
+    + specialize (H1 H4). destruct H1 as [D [Hsub Hred]].
+      exists D. intuition. eapply eall_sub_open_sub; eauto.
+      rewrite <- to_decl_open_expr_wrt_expr_distr. auto.
 Qed.
 
 Print Assumptions bidir_sound.
