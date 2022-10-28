@@ -1,0 +1,191 @@
+\documentclass{article}
+
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+
+\newcommand{\sep}{~|~}
+\newcommand{\nsep}{& \,~~~|~~}
+\newcommand{\newsyntax}[2]{\text{#1} \qquad & #2 \coloneqq}
+\newcommand{\comm}[1]{& \qquad \text{#1}}
+\newcommand{\cond}[1]{& \qquad (#1)}
+
+\newcommand{\inferapp}[4][\kappa]{#2 ~\cdot~#3~\&~#4 \Rightarrow #1}
+\newcommand{\acheck}[3]{#1 \le #2 \Leftarrow #3}
+\newcommand{\scheck}[2]{#1 \Leftarrow #2}
+\newcommand{\lcheck}[5][x]{[\,#1 : #2 \vdash \acheck{#3}{#4}{#5}\,]}
+\newcommand{\slcheck}[4][x]{[\,#1 : #2 \vdash \scheck{#3}{#4}\,]}
+\newcommand{\ainfer}[3][\kappa]{#2 \le #3 \Rightarrow #1}
+\newcommand{\sinfer}[2][\kappa]{#2 \Rightarrow #1}
+\newcommand{\reduce}[2][\kappa]{#2 \longrightarrow #1}
+\newcommand{\compact}[2]{#1 \lesssim #2}
+\newcommand{\capp}[2][\kappa]{#1 ~\$~ #2}
+\newcommand{\kvar}{\hat{k}}
+\newcommand{\kvarn}[2][k]{\hat{#1_{#2}}}
+
+\newcommand{\wlred}{~\hookrightarrow~ &}
+\newcommand{\Int}{\mathrm{Int}}
+\newcommand{\app}[2]{#1\,#2}
+\newcommand{\alambda}[4][x]{\lambda #1 : #2.\, #3 : #4}
+\newcommand{\abind}[4][x]{\Lambda #1 : #2.\, #3 : #4}
+\newcommand{\aforall}[3][x]{\forall #1 : #2.\, #3}
+\newcommand{\aPi}[3][x]{\Pi #1 : #2.\, #3}
+\newcommand{\ngsep}{\\ & ,\,}
+\newcommand{\wlgroup}[1]{\llbracket\, #1 \,\rrbracket}
+\newcommand{\castdn}[1]{\mathrm{cast}_\downarrow\,#1 }
+\newcommand{\castup}[2]{\mathrm{cast}_\uparrow [#1]\,#2 }
+\newcommand{\ex}[1][a]{\hat{#1}}
+\newcommand{\exb}[2][a]{\hat{#1} : #2}
+\newcommand{\subst}[3][x]{[\,#2 / #1\,]\,#3}
+\newcommand{\exsubst}[3][a]{\subst[\hat{#1}]{#2}{#3}}
+\newcommand{\ksubst}[3][k]{\subst[\hat{#1}]{#2}{#3}}
+\newcommand{\monoize}[3]{#1 \rightarrowtail #2 \dashv \overline{#3}}
+\newcommand{\reorder}[5]{#1\langle#2 \coloneqq #3 \rangle \rightsquigarrow \overline{#4} \Vdash #5}
+
+\allowdisplaybreaks
+
+\begin{document}
+
+\begin{align*}
+    \newsyntax{Expressions}{e,\, f ,\, A,\, B,\, C} \dots \\
+                          \nsep \kvar \comm{Kind Ex. Vars}\\
+    \newsyntax{Mono Exprs}{\tau} \dots \\
+    \newsyntax{Optional Binding}{ob} \cdot \sep x : A \\
+    \newsyntax{Continuations}{\kappa} \inferapp{\_}{e_1}{e_2} \comm{Application Inference} \\
+                          \nsep \reduce{\_} \comm{Reduction} \\
+                          \nsep \compact{\_}{A} \comm{Check} \\
+    \newsyntax{Judgement / Work}{w} [\,ob \vdash \acheck{e_1}{e_2}{A}\,] \comm{Check with Local Env} \\
+                          \nsep \ainfer{e_1}{e_2} \comm{Inference} \\
+                          \nsep \inferapp{A}{e_1}{e_2} \comm{Application Inference} \\
+                          \nsep \reduce{e} \comm{Reduction} \\
+                          \nsep \compact{A}{B} \comm{Type Compactible} \\
+                          \nsep \capp{e} \comm{Cont Application} \\
+                          \nsep \wlgroup{w ,\, \dots} \comm{Grouping} \\
+    \newsyntax{Bindings}{b} x:A \sep \hat{x} : A \sep \kvar \\
+    \newsyntax{Worklist}{\Gamma} \cdot \sep \Gamma \vdash w \sep \Gamma ,\, b \\
+\end{align*}
+
+\begin{align*}
+    & \Gamma_1 \Vdash \Gamma_2  \comm{\text{Worklist Append}} \\
+    & \overline{\exb{A}} \comm{A list of existential bindings} \\
+    \acheck{e_1}{e_2}{A}  & \triangleq [\,\cdot \vdash \acheck{e_1}{e_2}{A}\,] \comm{Check without Local Env} \\
+    \sinfer{e} & \triangleq \ainfer{e}{e} \\
+    \scheck{e}{A} & \triangleq \acheck{e}{e}{A} \\
+    A \rightarrow B & \triangleq \aPi{A}{B} \quad (x \notin \mathrm{fv}(B)) \\
+\end{align*}
+
+$\monoize{e}{e'}{\exb[x]{A}}$: Monoize $e$ yielding $e'$ and new existentials $\overline{\exb[x]{A}}$
+\vspace{1em}
+
+$\reorder{\Gamma}{\ex}{e}{\exb[x]{A}}{\Gamma'}$: Reorder $\Gamma$ w.r.t. instantiation $\ex \coloneqq e$,
+resulting existentials $\overline{\exb[x]{A}}$ moved and $\Gamma'$ leftover.
+\vspace{1em}
+
+$\capp{e} = w$: Apply continuation $\kappa$ to $e$, yielding (grouped) judgement $w$
+
+\begin{align*}
+    % Inference
+    \Gamma \vdash \sinfer{x} \wlred \Gamma \vdash \capp{A} \qquad (x : A \in \Gamma) \\
+    \Gamma \vdash \sinfer{n} \wlred \Gamma \vdash \capp{\Int} \\
+    \Gamma \vdash \sinfer{\Int} \wlred \Gamma \vdash \capp{\star} \\
+    \Gamma \vdash \sinfer{\star} \wlred \Gamma \vdash \capp{\square} \\
+    \Gamma \vdash \ainfer{\bot_{A}}{\bot_{B}} \wlred \Gamma,\, \kvar \vdash \llbracket\, \capp{A} ,\, \acheck{A}{B}{\kvar} ,\, \acheck{B}{A}{\kvar} \,\rrbracket \\
+    \Gamma \vdash \ainfer{e_1 :: A_1}{e_2 :: A_2} \wlred
+        \Gamma ,\, \kvar \vdash \wlgroup{\capp{A_1} ,\, \acheck{A_1}{A_2}{\kvar} ,\, \acheck{A_2}{A_1}{\kvar}
+        \ngsep \acheck{e_1}{e_2}{A_1}} \\
+    \\
+    % Inference Recursive
+    \Gamma \vdash \ainfer{\app{f_1}{\tau_1}}{\app{f_2}{\tau_2}} \wlred \Gamma \vdash \ainfer[\inferapp{\_}{\tau_1}{\tau_2}]{f_1}{f_2} \\
+    \Gamma \vdash \ainfer{\alambda{A_1}{e_1}{B_1}}{\alambda{A_2}{e_2}{B_2}} \wlred
+        \Gamma ,\, \kvarn{1} ,\, \kvarn{2} \vdash \wlgroup{\capp{\aPi{A_1}{B_1}}
+        \ngsep \acheck{A_1}{A_2}{\kvarn{1}} ,\, \acheck{A_2}{A_1}{\kvarn{1}}
+        \ngsep \lcheck{A_1}{B_1}{B_2}{\kvarn{2}} ,\, \lcheck{A_1}{B_2}{B_1}{\kvarn{2}}
+        \ngsep \lcheck{A_1}{e_1}{e_2}{B_1}} \\
+    \Gamma \vdash \ainfer{\abind{A_1}{e_1}{B_1}}{\abind{A_2}{e_2}{B_2}} \wlred
+        \Gamma ,\, \kvarn{1} ,\, \kvarn{2} \vdash \wlgroup{\capp{\aforall{A_1}{B_1}}
+        \ngsep \acheck{A_1}{A_2}{\kvarn{1}} ,\, \acheck{A_2}{A_1}{\kvarn{1}}
+        \ngsep \lcheck{A_1}{B_1}{B_2}{\kvarn{2}} ,\, \lcheck{A_1}{B_2}{B_1}{\kvarn{2}}
+        \ngsep \lcheck{A_1}{e_1}{e_2}{B_1}} \\
+    \Gamma \vdash \ainfer{\aPi{A_1}{B_1}}{\aPi{A_2}{B_2}} \wlred
+        \Gamma ,\, \kvarn{1} ,\, \kvarn{2} \vdash \wlgroup{\capp{\kvarn{2}}
+        \ngsep \scheck{A_1}{\kvarn{1}} ,\, \acheck{A_2}{A_1}{\kvarn{1}}
+        \ngsep \slcheck{A_1}{B_1}{\kvarn{2}} ,\, \lcheck{A_2}{B_1}{B_2}{\kvarn{2}}} \\
+    \\
+    % Inference Other
+    \Gamma \vdash \ainfer{\castdn{e_1}}{\castdn{e_2}} \wlred \Gamma \vdash \ainfer[\reduce{\_}]{e_1}{e_2} \\
+    \Gamma \vdash \ainfer{\castup{A_1}{e_1}}{\castup{A_2}{e_2}} \wlred
+        \Gamma ,\, \kvar \vdash \wlgroup{\capp{B} ,\, \acheck{A_1}{A_2}{\kvar} ,\, \acheck{A_2}{A_1}{\kvar}
+        \ngsep \acheck{e_1}{e_2}{B}} \quad (\reduce[B]{A_1} \land \reduce[B]{A_2}) \\
+    \\
+    % Inference Forall
+    \Gamma \vdash \ainfer{\aforall{A}{B}}{C} \wlred
+        \Gamma ,\, \kvar ,\, \exb[a]{A} \vdash \wlgroup{\capp{\star}
+        ,\, \scheck{A}{\kvar} ,\, \slcheck{A}{B}{\star}
+        \ngsep \acheck{\subst{\ex[a]}{B}}{C}{\star}} \qquad (C \neq \aforall{D}{E})\\
+    \Gamma \vdash \ainfer{A}{\aforall{B}{C}} \wlred
+        \Gamma ,\, \kvar \vdash \wlgroup{\capp{\star}
+        ,\, \scheck{B}{\kvar} ,\, \scheck{A}{\star}
+        ,\, \lcheck{B}{A}{C}{\star}} \\
+        & (A \neq \aforall{D}{E}) \\
+    \Gamma \vdash \ainfer{\aforall{A}{B}}{\aforall{C}{D}} \wlred
+        \Gamma ,\, \kvarn{1} ,\, \kvarn{2} \vdash \wlgroup{\capp{\star}
+        ,\, \scheck{A}{\kvarn{1}} ,\, \scheck{C}{\kvarn{2}}
+        ,\, \slcheck{A}{B}{\star}
+        \ngsep \lcheck{C}{\aforall{A}{B}}{D}{\star}} \\
+    % Application Inference
+    \\
+    \Gamma \vdash \inferapp{\aPi{A}{B}}{\tau_1}{\tau_2} \wlred
+        \Gamma \vdash \wlgroup{\capp{\subst{\tau_1}{B}} ,\, \acheck{\tau_1}{\tau_2}{A}} \\
+    \Gamma \vdash \inferapp{\aforall{A}{B}}{\tau_1}{\tau_2} \wlred
+        \Gamma ,\, \exb{A} \vdash \inferapp{\subst{\ex}{B}}{\tau_1}{\tau_2} \\
+    \Gamma_1 ,\, \exb{\star} \Vdash \Gamma_2 \vdash \inferapp{\ex}{\tau_1}{\tau_2} \wlred
+    \Gamma_1 ,\, \kvar ,\, \exb[A]{\kvar} ,\, \exb[B]{\star} \Vdash \exsubst{\ex[A] \rightarrow \ex[B]}{\Gamma_2}
+    \\ & \vdash \wlgroup{\capp{\ex[B]} ,\, \acheck{e_1}{e_2}{\ex[A]}} \\
+    % Reduction
+    \\
+    \Gamma \vdash \reduce{A} \wlred \Gamma \vdash \capp{B} \quad (A \longrightarrow B) \\
+    \Gamma \vdash \reduce{\aforall{A}{B}} \wlred \Gamma ,\, \exb{A} \vdash \reduce{\subst{\ex}{B}} \\
+    \\
+    % Existentials
+    \Gamma \vdash \sinfer{\ex} \wlred \Gamma \vdash \capp{A} \quad (\exb{A} \in \Gamma) \\
+    \Gamma_1 ,\, \exb{A} \Vdash \Gamma_2 \vdash \ainfer{\ex}{\tau} \wlred
+        \Gamma_1 ,\, \overline{\ex[x] : B} \vdash \scheck{\tau}{A} \Vdash \subst{\tau}{\Gamma_2'}
+        \vdash \capp{A}
+        \\ & (\, \reorder{\Gamma_2}{\ex}{\tau}{\exb[x]{B}}{\Gamma_2'} \,) \\
+    \Gamma_1 ,\, \exb{A} \vdash \Gamma_2 \vdash \ainfer{e}{\ex} \wlred
+        \Gamma_1 ,\, \overline{\ex[x] : B} ,\, \overline{\ex[y] : C} \vdash \scheck{e'}{A} \Vdash \subst{e'}{\Gamma_2'}
+        \vdash \capp{A}
+        \\ & (\, e \rightarrowtail e' \dashv \overline{\exb[x]{B}}
+        ,\, \reorder{\Gamma_2}{\ex}{e'}{\exb[y]{C}}{\Gamma_2'} \,) \\
+    \\
+    % Kind Vars
+    \Gamma_1 ,\, \kvarn{1} \Vdash \Gamma_2 ,\, \kvarn{2} \Vdash \Gamma_3 \vdash \ainfer{\kvarn{1}}{\kvarn{2}} \wlred
+        \Gamma_1 \Vdash \ksubst[k_1]{\star}{(\Gamma_2 \Vdash \ksubst[k_2]{\star}{(\Gamma_3 \vdash \capp{\square})})}
+    \\
+    \Gamma_1 ,\, \kvar \Vdash \Gamma_2 \vdash \sinfer{\kvar} \wlred
+        \Gamma_1 \Vdash \ksubst{\star}{(\Gamma_2 \vdash \capp{\square})}  \\
+    \Gamma_1 ,\, \kvar \Vdash \Gamma_2 \vdash \ainfer{\kvar}{\star} \wlred
+        \Gamma_1 \Vdash \ksubst{\star}{(\Gamma_2 \vdash \capp{\square})}  \\
+    \Gamma_1 ,\, \kvar \Vdash \Gamma_2 \vdash \ainfer{\star}{\kvar} \wlred
+        \Gamma_1 \Vdash \ksubst{\star}{(\Gamma_2 \vdash \capp{\square})}  \\
+    % Check
+    \\
+    \Gamma \vdash [\, ob \vdash \acheck{e_1}{e_2}{A} \,] \wlred
+        \Gamma ,\, ob \vdash \ainfer[\compact{\_}{A}]{e_1}{e_2} \\
+    \Gamma_1 ,\, \kvar \Vdash \Gamma_2 \vdash \compact{\kvar}{\square} \wlred
+        \Gamma_1 \Vdash \ksubst{\square}{\Gamma_2}  \\
+    \Gamma_1 ,\, \kvar \Vdash \Gamma_2 \vdash \compact{\square}{\kvar} \wlred
+        \Gamma_1 \Vdash \ksubst{\square}{\Gamma_2}  \\
+    \Gamma \vdash \compact{\square}{\square} \wlred \Gamma  \\
+    \Gamma \vdash \compact{A}{B} \wlred
+        \Gamma ,\, \kvar \vdash \acheck{A}{B}{\kvar} \quad (A \neq \square \land B \neq \square)\\
+    \\
+    \Gamma \vdash \capp{e} \wlred \Gamma \vdash w \quad (\capp{e} = w) \\
+    \Gamma \vdash \wlgroup{w ,\, \dots} \wlred \Gamma \vdash \wlgroup{\dots} \vdash w \\
+    \Gamma \vdash \wlgroup{} \wlred \Gamma \\
+    \Gamma \vdash \kvar \wlred \Gamma \\
+    \Gamma \vdash x : A \wlred \Gamma ,\, \kvar \vdash \scheck{A}{\kvar} \\
+    \Gamma \vdash \exb{A} \wlred \Gamma ,\, \kvar \vdash \scheck{A}{\kvar} \\
+\end{align*}
+
+\end{document}
