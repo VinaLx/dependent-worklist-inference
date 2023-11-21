@@ -102,6 +102,15 @@ Proof.
   conclude_dets_ih; auto.
 Qed.
 
+Lemma inst_wl_app : forall Θ1 Γ1' Γ1 Θ2 Γ2' Γ2 Θ3
+  , Θ1 ⊩ Γ1' ⟿ Γ1 ⫣ Θ2
+  → Θ2 ⊩ Γ2' ⟿ Γ2 ⫣ Θ3
+  → Θ1 ⊩ Γ1' ⫢′ Γ2' ⟿ Γ1 ⫢ Γ2 ⫣ Θ3.
+Proof.
+  intros.
+  induction H0; simpl; eauto.
+Qed.
+
 Lemma inst_wl_split : forall Γ1' Γ2' Γ Θ Θ'
   , Θ ⊩ Γ1' ⫢′ Γ2' ⟿ Γ ⫣ Θ'
   → exists Γ1 Γ2 Θ0
@@ -142,6 +151,28 @@ Proof.
   - now exists (Θ0; x : A ≔ e).
 Qed.
 
+Lemma to_ctx_ignore_ex_k : forall Θ1 Θ2 x k
+  , ⌊ Θ1 ; x ≔ ⧼ k ⧽ ;; Θ2 ⌋′ = ⌊ Θ1 ;; Θ2 ⌋′.
+Proof.
+  intros; induction Θ2; simpl.
+  - reflexivity.
+  - destruct a. destruct s; auto.
+Qed.
+
+Lemma wf_ss_weakening_k : forall Θ1 Θ2 x k
+  , wf_ss (Θ1 ;; Θ2)
+  → x `notin` dom (Θ1 ;; Θ2)
+  → wf_ss (Θ1; x ≔ ⧼k⧽;; Θ2).
+Proof.
+  induction Θ2; simpl; intros.
+  - auto.
+  - destruct a. destruct s; inversion H; subst;
+      econstructor;
+      solve [try rewrite to_ctx_ignore_ex_k; eauto 2].
+Qed.
+
+Hint Resolve wf_ss_weakening_k : ss_weaken.
+
 Lemma inst_e_weakening : forall Θ1 Θ2 e' e Θ'
   , Θ1 ;; Θ2 ⊩ e' ⇝ e → wf_ss (Θ1 ;; Θ' ;; Θ2)
   → Θ1 ;; Θ' ;; Θ2 ⊩ e' ⇝ e.
@@ -158,7 +189,7 @@ Proof.
 Qed.
 
 #[local]
-Hint Resolve inst_e_weakening : inst_weakening.
+Hint Resolve inst_e_weakening : inst_weaken.
 
 Lemma inst_e_weakening_app : forall Θ Θ' e' e
   , Θ       ⊩ e' ⇝ e → wf_ss (Θ ;; Θ')
@@ -166,7 +197,7 @@ Lemma inst_e_weakening_app : forall Θ Θ' e' e
 Proof.
   intros.
   replace (Θ ;; Θ') with (Θ ;; Θ' ;; nil) by auto.
-  auto with inst_weakening.
+  auto with inst_weaken.
 Qed.
 
 Lemma inst_e_weakening_cons : forall Θ sse e' e
@@ -175,22 +206,14 @@ Lemma inst_e_weakening_cons : forall Θ sse e' e
 Proof.
   intros.
   replace (cons sse Θ) with (Θ ;; one sse ;; nil) by auto.
-  auto with inst_weakening.
+  auto with inst_weaken.
 Qed.
 
 #[export]
 Hint Resolve
   inst_e_weakening_app
   inst_e_weakening_cons
-  inst_e_weakening : inst_weakening.
-
-Lemma to_ctx_ignore_ex_k : forall Θ1 Θ2 x k
-  , ⌊ Θ1 ; x ≔ ⧼ k ⧽ ;; Θ2 ⌋′ = ⌊ Θ1 ;; Θ2 ⌋′.
-Proof.
-  intros; induction Θ2; simpl.
-  - reflexivity.
-  - destruct a. destruct s; auto.
-Qed.
+  inst_e_weakening : inst_weaken.
 
 Lemma dom_remove : forall A (Θ1 : list (atom * A)) Θ2 x e
   , dom (Θ2 ++ Θ1) [<=] dom (Θ2 ++ (cons (pair x e) Θ1)).
@@ -301,6 +324,26 @@ Hint Resolve
   inst_c_strengthening_k_cons
   : ss_strengthen.
 
+
+Lemma inst_e_strengthening_v_cons : forall Θ x A e' e
+  , Θ; x : A! ⊩ e' ⇝ e → Θ ⊩ e' ⇝ e.
+Proof.
+  intros.
+  remember (Θ; x : A!) as Θ'.
+  generalize dependent HeqΘ'.
+  pattern Θ', e', e, H.
+  eapply inste_mut with
+    (P0 := fun Θ' b' b _ => Θ' = Θ; x : A! → inst_body Θ b' b);
+    intros; subst; simpl in *; try solve [eauto | inversion w; eauto].
+  - destruct b. inversion H0.
+    inversion w; subst. eauto.
+  - destruct b. inversion H0.
+    inversion w; subst. eauto.
+Qed.
+
+#[export]
+Hint Resolve inst_e_strengthening_v_cons : ss_strengthen.
+
 Ltac conclude_det :=
   match goal with
   | H1 : ?Θ ⊩ ?e ⇝ ?e1
@@ -322,11 +365,11 @@ Lemma inst_ob_weakening : forall Θ1 Θ2 Θ' ob' ob
   , Θ1 ;; Θ2 ⊩ ob' ⇝? ob → wf_ss (Θ1 ;; Θ' ;; Θ2)
   → Θ1 ;; Θ' ;; Θ2 ⊩ ob' ⇝? ob.
 Proof.
-  intros. dependent destruction H; eauto with inst_weakening.
+  intros. dependent destruction H; eauto with inst_weaken.
 Qed.
 
 #[local]
-Hint Resolve inst_ob_weakening : inst_weakening.
+Hint Resolve inst_ob_weakening : inst_weaken.
 
 Lemma wf_ss_unapp : forall xs ys,
     wf_ss (xs ;; ys) → wf_ss xs.
@@ -343,7 +386,7 @@ Proof.
 Qed.
 
 
-Hint Immediate wf_ss_unapp wf_ss_uncons : inst_weakening.
+Hint Immediate wf_ss_unapp wf_ss_uncons : inst_weaken.
 Hint Immediate wf_ss_unapp wf_ss_uncons : wf_ss.
 
 Ltac clear_app_suffix_impl :=
@@ -422,17 +465,17 @@ Proof.
     intros; subst.
 
   (* inst_w *)
-  - clear_app_suffix; eauto 6 with inst_weakening.
-  - clear_app_suffix; eauto 6 with inst_weakening.
-  - eauto with inst_weakening.
-  - eauto with inst_weakening. admit.
-  - eauto with inst_weakening.
+  - clear_app_suffix; eauto 6 with inst_weaken.
+  - clear_app_suffix; eauto 6 with inst_weaken.
+  - eauto with inst_weaken.
+  - eauto with inst_weaken. admit.
+  - eauto with inst_weaken.
 
   (* inst_wl *)
   - clear_app_suffix. auto.
   - conclude_ss_extend. simplify_list_eq.
     eapply instwl_cons.
-    + eauto with inst_weakening.
+    + eauto with inst_weaken.
     + replace (Θ1;; Θ'1;; Θ2;; Θ0;; Θ5) with
         (Θ1;; Θ'1;; (Θ2;; Θ0);; Θ5) by
         now repeat rewrite <- app_assoc.
@@ -451,7 +494,7 @@ Proof.
 Admitted.
 
 
-Hint Resolve inst_wl_weakening : inst_weakening.
+Hint Resolve inst_wl_weakening : inst_weaken.
 
 Lemma inst_w_weakening : forall Θ1 Θ2 Θ3 w' w
   , Θ1 ;; Θ2 ⊩ w' ⇝′ w ⫣ Θ1 ;; Θ2 ;; Θ3
@@ -460,7 +503,7 @@ Lemma inst_w_weakening : forall Θ1 Θ2 Θ3 w' w
 Proof.
   intros * H.
   dependent induction H; intros;
-    clear_app_suffix; eauto 6 with inst_weakening.
+    clear_app_suffix; eauto 6 with inst_weaken.
   admit.
 Admitted.
  *)
@@ -561,6 +604,178 @@ Qed.
 
 Hint Resolve inst_ob_rename : ln.
 
+Scheme aexpr_lc_mut := Induction for lc_aexpr Sort Prop
+  with abody_lc_mut := Induction for lc_abody Sort Prop.
+
+Lemma in_insert : forall A (xs : list A) x ys,
+    In x (xs ++ x :: ys).
+Proof.
+  induction xs; simpl; auto.
+Qed.
+
+#[export]
+Hint Resolve in_insert : in_.
+
+#[export]
+Hint Unfold binds : in_.
+
+Lemma in_weakening_insert : forall A (x : A) xs y ys,
+    In x (xs ++ ys) → In x (xs ++ y :: ys).
+Proof.
+  induction xs; simpl; intros.
+  - auto.
+  - destruct H; auto.
+Qed.
+
+#[export]
+Hint Resolve in_weakening_insert : in_.
+
+Lemma inst_e_k_subst' : forall e' Θ1 Θ2 k' k x
+  , x `notin` dom Θ1 `union` dom Θ2
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → lc_aexpr e'
+  → forall e, Θ1 ;; Θ2 ⊩ k_subst_aexpr k' x e' ⇝ e
+  → Θ1; x ≔ ⧼k⧽;; Θ2 ⊩ e' ⇝ e.
+Proof.
+  intros * H1 H2 Lc.
+  induction Lc using aexpr_lc_mut with
+    (P0 := fun b' _ => forall b
+      , inst_body (Θ1 ;; Θ2) (k_subst_abody k' x b') b
+        → inst_body (Θ1; x ≔ ⧼k⧽;; Θ2) b' b); simpl; intros e0 Inst;
+  match goal with
+  | |- _ ⊩ ⧼ ?k ⧽′ ⇝ _ => idtac
+  | _ => dependent destruction Inst; eauto with ss_weaken in_
+  end.
+  - destruct k0; simpl in *;
+      [inversion Inst; auto with ss_weaken .. | idtac].
+    destruct (kx == x).
+    + subst. eapply inst_e_weakening_app with (Θ' := Θ2) in H2;
+        [.. | eauto with inst_wf_ss].
+      conclude_dets.
+      econstructor; eauto with ss_weaken inst_wf_ss in_.
+    + dependent destruction Inst. eauto with ss_weaken in_.
+  - pick fresh x' and apply inste_abs; [auto | ..].
+    inst_cofinites_with x'.
+    rewrite abody_k_subst_open_comm in *; auto.
+  - pick fresh x' and apply inste_pi; [auto | ..].
+    inst_cofinites_with x'.
+    rewrite aexpr_k_subst_open_comm in *; eauto.
+  - pick fresh x' and apply inste_bind; [auto | ..].
+    inst_cofinites_with x'.
+    rewrite abody_k_subst_open_comm in *; auto.
+  - pick fresh x' and apply inste_all; [auto | ..].
+    inst_cofinites_with x'.
+    rewrite aexpr_k_subst_open_comm in *; eauto.
+Qed.
+
+Lemma inst_e_k_subst : forall e' e Θ1 Θ2 k' k x
+  , x `notin` dom Θ1 `union` dom Θ2
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → Θ1 ;; Θ2 ⊩ k_subst_aexpr k' x e' ⇝ e
+  → Θ1; x ≔ ⧼k⧽;; Θ2 ⊩ e' ⇝ e.
+Proof.
+Admitted.
+
+
+Lemma inst_c_k_subst : forall c' Θ1 Θ2 c x k' k
+  , Θ1 ;; Θ2 ⊩ k_subst_cont k' x c' ⟿′ c
+  → x `notin` dom Θ1 `union` dom Θ2
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → Θ1; x ≔ ⧼k⧽;; Θ2 ⊩ c' ⟿′ c.
+Proof.
+  induction c'; simpl; intros * Inst;
+    dependent destruction Inst; simpl in *; intros;
+    eauto using inst_e_k_subst with ss_weaken.
+Qed.
+
+#[local]
+Hint Resolve inst_e_k_subst inst_c_k_subst : inst_subst_impl.
+
+Lemma inst_w_k_subst : forall w' Θ1 Θ2 w x k' k
+  , Θ1 ;; Θ2 ⊩ k_subst_work k' x w' ⇝′ w
+  → x `notin` dom Θ1 `union` dom Θ2
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → Θ1; x ≔ ⧼k⧽;; Θ2 ⊩ w' ⇝′ w.
+Proof.
+  induction w'; simpl; intros * Inst;
+    dependent destruction Inst; simpl in *; intros;
+    eauto 7 with inst_subst_impl ss_weaken.
+  - destruct ob; inversion H; subst;
+      eauto 7 with inst_subst_impl ss_weaken.
+Qed.
+
+#[local]
+Hint Resolve inst_w_k_subst : inst_subst_impl.
+
+Lemma wl_dom_k_subst_notin : forall x y k Γ,
+    x `notin` wl_dom Γ → x `notin` wl_dom (k_subst_worklist y k Γ).
+Proof.
+  induction Γ; simpl; intros.
+  - auto.
+  - auto.
+  - destruct bd; auto.
+Qed.
+
+Lemma inst_wl_k_subst : forall Γ' Θ1 Θ2 Θ3 Γ x k' k
+  , Θ1 ;; Θ2 ⊩ k_subst_worklist k' x Γ' ⟿ Γ ⫣ Θ1;; Θ2;; Θ3
+  → x `notin` dom Θ1 `union` dom Θ2 `union` wl_dom Γ'
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → Θ1; x ≔ ⧼k⧽;; Θ2 ⊩ Γ' ⟿ Γ ⫣ Θ1; x ≔ ⧼k⧽;; Θ2;; Θ3.
+Proof.
+  induction Γ'; simpl; intros * Inst; dependent destruction Inst;
+    simpl in *; intros.
+  - simplify_list_eq. eauto with ss_weaken.
+  - econstructor; [eauto | ..].
+    rewrite <- app_assoc.
+    eapply inst_w_k_subst; eauto.
+    + now rewrite app_assoc.
+    + cut (x `notin` dom (Θ1;; Θ2;; Θ3));
+        eauto 6 using inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+  - destruct bd; simpl in x2; inversion x2; subst; simpl in *.
+    conclude_ss_extend. simplify_list_eq.
+    econstructor.
+    + eauto.
+    + auto.
+    + rewrite <- app_assoc. eapply inst_e_k_subst.
+      * cut (x1 `notin` dom (Θ1;; Θ2;; Θ));
+          eauto 6 using inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+      * eassumption.
+      * now rewrite app_assoc.
+    + rewrite <- app_assoc.
+      rewrite to_ctx_ignore_ex_k.
+      rewrite -> app_assoc; eassumption.
+  - destruct bd; simpl in x2; inversion x2; subst; simpl in *.
+    conclude_ss_extend. simplify_list_eq.
+    econstructor.
+    + eauto.
+    + auto.
+  - destruct bd; simpl in x2; inversion x2; subst; simpl in *.
+    conclude_ss_extend. simplify_list_eq.
+    econstructor.
+    + assumption.
+    + eauto.
+    + auto.
+    + rewrite <- app_assoc. eapply inst_e_k_subst.
+      * cut (x1 `notin` dom (Θ1;; Θ2;; Θ));
+          eauto 6 using inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+      * eassumption.
+      * now rewrite app_assoc.
+    + rewrite <- app_assoc.
+      rewrite to_ctx_ignore_ex_k.
+      rewrite -> app_assoc. eassumption.
+Qed.
+
+Lemma inst_wl_k_subst_cons : forall Γ' Θ1 Θ2 Γ x k' k
+  , Θ1 ⊩ k_subst_worklist k' x Γ' ⟿ Γ ⫣ Θ1;; Θ2
+  → x `notin` dom Θ1 `union` wl_dom Γ'
+  → Θ1 ⊩ ⧼k'⧽′ ⇝ ⧼k⧽'
+  → Θ1; x ≔ ⧼k⧽ ⊩ Γ' ⟿ Γ ⫣ Θ1; x ≔ ⧼k⧽;; Θ2.
+Proof.
+  intros.
+  replace (Θ1; x ≔ ⧼ k ⧽) with (Θ1; x ≔ ⧼ k ⧽;; nil) by auto.
+  eapply inst_wl_k_subst; eauto.
+Qed.
+
 Lemma inst_e_fresh : forall Θ e' e x,
     Θ ⊩ e' ⇝ e → x `notin` fv_bexpr e → x `notin` fv_aexpr e'.
 Proof.
@@ -633,9 +848,6 @@ Ltac prepare_rename_impl :=
 .
 
 Ltac prepare_rename := repeat prepare_rename_impl.
-
-Scheme aexpr_lc_mut := Induction for lc_aexpr Sort Prop
-  with abody_lc_mut := Induction for lc_abody Sort Prop.
 
 Ltac e_rev_subst_apply_ih :=
   match goal with
@@ -853,14 +1065,14 @@ Proof.
         -- repeat rewrite inst_set_app_distr.
            autorewrite with inst_notin; auto.
     + simplify_inst_notin; auto with inst_notin.
-    + eauto with wf_ss inst_weakening.
+    + eauto with wf_ss inst_weaken.
   - destruct b; simpl in H2; inversion H2; subst.
     + conclude_ss_extend; simplify_list_eq.
       apply H0 in H10 as (Γ1 & Θ' & <- & <- & Fr & H10); simpl in H1; auto.
       assert (exists A0', [e /' x] A0' = A0 /\ Θ ;; Θ' ⊩ A ⇝ A0') as (A0' & E & ?).
       apply inst_e_rev_subst with e'; auto.
       * simplify_inst_notin. auto with inst_notin.
-      * eauto with inst_weakening.
+      * eauto with inst_weaken.
       * eapply inst_eq_inst_e.
         -- eassumption.
         -- eauto with wf_ss.
@@ -878,7 +1090,7 @@ Proof.
       assert (exists A0', [e /' x] A0' = A0 /\ Θ ;; Θ' ⊩ A ⇝ A0') as (A0' & E & ?).
       apply inst_e_rev_subst with e'; auto.
       * auto with inst_notin.
-      * eauto with inst_weakening.
+      * eauto with inst_weaken.
       * eapply inst_eq_inst_e; eauto with wf_ss.
         -- repeat rewrite inst_set_app_distr.
            autorewrite with inst_notin; auto.

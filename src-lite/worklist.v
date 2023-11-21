@@ -63,7 +63,7 @@ Inductive reorder
   : worklist → list binding → var → aexpr → worklist → worklist → Prop :=
 | re_stop : forall Γ ψ x A e
   , x `notin` fex_aexpr e
-  → Γ ,′ ^x :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ ⫢′ to_wl ψ (*,′ ^x :′ A *) ++ wl_nil
+  → Γ ,′ ^x :′ A ‖ ψ ⊢ ^x ≔ e ⊣ Γ ++ to_wl ψ
 | re_skip_work : forall Γ w ψ x e Γ1' Γ2'
   , Γ ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2'
   → Γ ⊨′ w ‖ ψ ⊢ ^x ≔ e ⊣ Γ1' ++ Γ2' ⊨′ w
@@ -279,8 +279,7 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ⊨′ c $′ A1 ⊨′ ae_bot A1 <: ae_bot A2 ⇒′ c
 | st_app : forall Γ L f1 f2 a1 a2 c
   , smono_atype a1 → smono_atype a2
-  → (forall k, k `notin` L →
-      ⪧′ Γ ⊨′ f1 <: f2 ⇒′ c_app a1 a2 c)
+  → ⪧′ Γ ⊨′ f1 <: f2 ⇒′ c_app a1 a2 c
   -> ⪧′ Γ ⊨′ ae_app f1 a1 <: ae_app f2 a2 ⇒′ c
 | st_abs : forall L Γ e1 e2 A1 A2 B1 B2 c
   , (forall x, x `notin` L → forall k1, k1 `notin` add x L
@@ -312,7 +311,7 @@ Inductive wl_step : worklist -> Prop :=
   , (forall x, x `notin` L → forall k, k `notin` add x L
     → forall t, t `notin` add k (add x L)
     → ⪧′ Γ ⊨′ c $′ ⋆′ ,′ ⧼^k⧽ ⊨′ A ⇐′ ⧼`^k⧽
-      ⊨′ x :?′ A ⊢? B ^`′ x ⇐′ ⧼`^k⧽
+      ⊨′ x :?′ A ⊢? B ^`′ x ⇐′ ⋆′
       ,′ ^t :′ A ⊨′ B ^^′ `^t <: C ⇐′ ⋆′)
   → ⪧′ Γ ⊨′ ae_all A B <: C ⇒′ c
 | st_forall_r : forall L Γ A B C c
@@ -354,16 +353,16 @@ Inductive wl_step : worklist -> Prop :=
   , ^x :′ A ∈′ Γ → `^x <> e
   → e ⤚ ⊖ ⇥ e' ‖ ψ \ L
   → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ1' ++ Γ2'
-  → ⪧′ Γ1' ⊨′ e' ⇐′ A
-    ⫢′ ⟦e' /′ ^x⟧ Γ2' ⊨′ e' <: e ⇒′ ex_subst_cont e' x c
+  → ⪧′ Γ1' (* TODO *)
+    ⫢′ ⟦e' /′ ^x⟧ Γ2' ⊨′ e ⇒′ ex_subst_cont e' x c
       (* ⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽ *)
   → ⪧′ Γ ⊨′ `^x <: e ⇒′ c
 | st_ex_r : forall L Γ Γ1' Γ2' x A e e' ψ c
   , ^x :′ A  ∈′ Γ → `^x <> e
   → e ⤚ ⊕ ⇥ e' ‖ ψ \ L
   → Γ ⫢′ to_wl ψ ‖ nil ⊢ ^x ≔ e' ⊣ Γ1' ++ Γ2'
-  → ⪧′ Γ1' ⊨′ e' ⇐′ A
-    ⫢′ ⟦e' /′ ^x⟧ Γ1' ⊨′ e <: e' ⇒′ ex_subst_cont e' x c
+  → ⪧′ Γ1' (* TODO *)
+    ⫢′ ⟦e' /′ ^x⟧ Γ1' ⊨′ e ⇒′ ex_subst_cont e' x c
      (* (⟦e' /′ ^x⟧ c ,′ ⧼^k⧽ ⊨′ ↑′0 <: A ⇐′ ⧼`^k⧽) *)
   → ⪧′ Γ ⊨′ e <: `^x ⇒′ c
 
@@ -376,13 +375,13 @@ Inductive wl_step : worklist -> Prop :=
   , (forall x, x `notin` L → forall k, k `notin` add x L
     → ⪧′ Γ ⊨′ c $′ B ^^′ e1 ⊨′ e1 <: e2 ⇐′ A)
   → ⪧′ Γ ⊨′ ae_pi A B ⋅ e1 & e2 ⇒′ c
-| st_iapp_ex : forall L Γ x c Γ1 Γ2
+| st_iapp_ex : forall L Γ x c Γ1 Γ2 e1 e2
   , Γ = Γ1 ,′ ^x :′ ⋆′ ⫢′ Γ2
   → (forall A, A `notin` L → forall B, B `notin` add A L
     → forall k, k `notin` add A (add B L) → forall F, F = ae_pi `^A `^B
     → ⪧′ Γ1 ,′ ⧼^k⧽ ,′ ^A :′ ⧼`^k⧽ ,′ ^B :′ ⋆′ ⫢′ ⟦ F /′ ^x ⟧ Γ2
-      ⊨′ F ⇒′ ex_subst_cont F x c)
-  → ⪧′ Γ ⊨′ `^x ⇒′ c
+      ⊨′ F ⋅ e1 & e2 ⇒′ ex_subst_cont F x c)
+  → ⪧′ Γ ⊨′ `^x ⋅ e1 & e2 ⇒′ c
 
 (* general reduce *)
 | st_gred : forall Γ A B c
@@ -391,7 +390,7 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ⊨′ A ⟼′ c
 | st_gred_forall : forall L Γ A B c
   , (forall x, x `notin` L
-    → ⪧′ Γ ,′ ^x :′ A ⊨′ B ^^′ `^x ⟼′ c ⊨′ x :?′ A ⊢? B ⇐′ ⋆′)
+    → ⪧′ Γ ,′ ^x :′ A ⊨′ B ^^′ `^x ⟼′ c ⊨′ x :?′ A ⊢? B ^`′ x ⇐′ ⋆′)
   → ⪧′ Γ ⊨′ ae_all A B ⟼′ c
 
 (* kind ex infer *)
@@ -414,24 +413,22 @@ Inductive wl_step : worklist -> Prop :=
 | st_check : forall Γ e1 e2 b A
   , ⪧′ Γ ,?′ b ⊨′ e1 <: e2 ⇒′ c_check A
   → ⪧′ Γ ⊨′ b ⊢? e1 <: e2 ⇐′ A
-| st_comp_box_l : forall Γ k
-  , ⪧′ ⟦ ak_box /′ ⧼k⧽ ⟧ Γ
-  (*
-     why notation?
-     (wl_step (wl_work Γ (w_compact (ae_kind ak_box) (ae_ex k)))))
-  *)
-  → ⪧′ Γ ⊨′ ◻′ ≲′ ⧼`^k⧽
-| st_comp_box_r : forall Γ k
-  , ⪧′ ⟦ ak_box /′ ⧼k⧽ ⟧ Γ
-  → ⪧′ Γ ⊨′ ⧼`^k⧽ ≲′ ◻′
+| st_comp_box_l : forall Γ1 Γ2 k
+  , ⪧′ Γ1 ⫢′ k_subst_worklist ak_box k Γ2
+  → k `notin` wl_dom Γ1 `union` wl_dom Γ2
+  → ⪧′ Γ1 ,′ ⧼^k⧽ ⫢′ Γ2 ⊨′ ◻′ ≲′ ⧼`^k⧽
+| st_comp_box_r : forall Γ1 Γ2 k
+  , ⪧′ Γ1 ⫢′ k_subst_worklist ak_box k Γ2
+  → k `notin` wl_dom Γ1 `union` wl_dom Γ2
+  → ⪧′ Γ1 ,′ ⧼^k⧽ ⫢′ Γ2 ⊨′ ⧼`^k⧽ ≲′ ◻′
 | st_comp_kv_eq : forall Γ k
   , ⪧′ Γ
+  → ⧼ ^k ⧽ ∈′ Γ
   → ⪧′ Γ ⊨′ ⧼`^k⧽ ≲′ ⧼`^k⧽
-| st_comp_kv : forall Γ x y
-  , x <> y
-  → in_scope Γ ⧼^x⧽ ⧼^y⧽
-  → ⪧′ ⟦ ak_ex x /′ ⧼y⧽⟧ Γ
-  → ⪧′ Γ ⊨′ ⧼`^x⧽ ≲′ ⧼`^y⧽
+| st_comp_kv : forall Γ1 Γ2 Γ3 x y
+  , y `notin` add x (wl_dom Γ1 `union` wl_dom Γ2 `union` wl_dom Γ3)
+  → ⪧′ Γ1,′ ⧼^x⧽ ⫢′ Γ2 ⫢′ k_subst_worklist (ak_ex x) y Γ3
+  → ⪧′ Γ1 ,′ ⧼^x⧽ ⫢′ Γ2 ,′ ⧼^y⧽ ⫢′ Γ3 ⊨′ ⧼`^x⧽ ≲′ ⧼`^y⧽
 | st_comp_sub : forall L Γ A B
   , (forall k, k `notin` L → ⪧′ Γ,′ ⧼^k⧽ ⊨′ A <: B ⇐′ ⧼`^k⧽)
   → ⪧′ Γ ⊨′ A ≲′ B
@@ -451,6 +448,7 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ,′ ⧼^k⧽
 where "⪧′ wl" := (wl_step wl) : type_scope
 .
+
 
 #[export]
 Hint Constructors wl_step : core.

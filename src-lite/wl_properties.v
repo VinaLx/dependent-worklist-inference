@@ -97,6 +97,8 @@ Ltac discharge_bind :=
 
 Ltac destruct_inst :=
   match goal with
+  | H : _ ⊩ ⋆′ ⇝ _ |- _ =>
+      dependent destruction H
   | H : _ ⊩ _ :?′ _ ⇝? _ |- _ =>
       dependent destruction H
   | H : _ ⊩ ob_none ⇝? _ |- _ =>
@@ -116,6 +118,19 @@ Ltac destruct_inst :=
       dependent destruction H
   | H : _ ⊩ _ <: _ ⇒′ _ ⇝′ _ |- _ =>
       dependent destruction H
+  | H : _ ⊩ _ ⋅ _ & _ ⇒′ _ ⇝′ _ |- _ =>
+      dependent destruction H
+  | H : _ ⊩ _ ⟼′ _ ⇝′ _ |- _ =>
+      dependent destruction H
+  | H : _ ⊩ c_check _ ⟿′ _ |- _ =>
+      dependent destruction H
+  | H : _ ⊩ _ ⫢′ _ ⟿ _ ⫣ _ |- _ =>
+      let H1 := fresh "Inst" in
+      let H2 := fresh "Inst" in
+      let Γ1' := fresh "Γ'" in
+      let Γ2' := fresh "Γ'" in
+      let Θ' := fresh "Θ" in
+      apply inst_wl_split in H as (Γ1' & Γ2' & Θ' & -> & H1 & H2)
   end
 .
 
@@ -140,7 +155,6 @@ Proof.
     (Γ ,' x' : A ,,' (subst_bcontext `' x' x bctx_nil)) in * by auto.
   apply busub_renaming; simpl; auto.
 Qed.
-
 
 Theorem wl_sound : forall Γ',
     ⪧′ Γ' → exists Γ Θ, nil ⊩ Γ' ⟿ Γ ⫣ Θ ∧ ⪧ Γ.
@@ -241,32 +255,123 @@ Proof.
   (* ex inst l *)
   -  destruct IHwl_step as (Γ0 & Θ & Inst & Solve).
      destruct_insts.
-    admit.
+     conclude_dets.
+     pose (Θ__ := Θ).
+     pose (e__ := e2).
+     exists (Γ' ⫢ Γ'0 ⊨ e__ <: e2 ⇒ c0), Θ__. split.
+     + constructor; [> .. | admit].
+
+     + admit.
   (* ex inst r *)
   - admit.
   (* app infer rec *)
-  - admit.
+  - repeat (inst_cofinites_by' gather_atoms_transfer).
+    destruct H0 as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    pick fresh x' for (fv_ss Θ' `union` fv_aexpr B `union` fv_bexpr A0 `union` fv_bexpr e).
+    erewrite subst_aexpr_intro with (x1 := x') in H4; auto.
+    apply inst_e_rev_subst with (v := e) in H4 as (B0 & <- & H4);
+      simpl; eauto with inst_wf_ss.
+    exists (Γ0 ⊨ be_all A0 (B0 \`' x') ⋅ e0 & e3 ⇒ c0), Θ'. split.
+    + admit.
+    + inversion Solve; subst.
+      eapply dst_infer_app with (B := B1) (C := C).
+      eapply iapp_all with (t := e); auto.
+      all: admit.
   (* app infer base *)
   - admit.
   (* app infer ex *)
-  - admit.
+  -  repeat (inst_cofinites_by' gather_atoms_transfer).
+     specialize (H1  (ae_pi `^ x0 `^ x1) eq_refl).
+     specialize (H0  (ae_pi `^ x0 `^ x1) eq_refl).
+     destruct H1 as (Γ0 & Θ & Inst & Solve).
+     destruct_insts.
+     conclude_dets.
+     simpl in *.
+     admit.
   (* gen-red base *)
   - admit.
   (* gen-red rec *)
-  - admit.
+  - repeat (inst_cofinites_by' gather_atoms_transfer).
+    destruct H0 as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    conclude_dets.
+    exists (Γ0 ⊨ be_all A2 (e2 \`' x) ⟼ c0), Θ'. split.
+    + admit.
+    + apply solve_uncons in Solve.
+      dependent destruction Solve.
+      eapply dst_reduce with (B := B0).
+      eapply gr_all with (t := e).
+      admit. admit. admit. auto.
   (* kind-ex *)
   - admit.
   - admit.
   - admit.
   - admit.
   (* check *)
-  - admit.
+  - destruct IHwl_step as (Γ0 & Θ & Inst & Solve).
+    destruct b; simpl in *; destruct_insts.
+    + exists (Γ0 ⊨ e0 <: e3 ⇐ A0), Θ. eauto.
+    + exists (Γ0 ⊨ x :? A1 ⊢? e0 <: e3 ⇐ A2), Θ'.
+        eauto 9 with ss_strengthen.
   (* compatible *)
+  - destruct IHwl_step as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    pose proof (inst_wl_ss_extend _ _ _ _ Inst1) as (Θ1 & <-).
+    exists (Γ' ⫢ Γ'0 ⊨ ◻' ≲ ◻'), (Θ0; k ≔ ⧼bk_box⧽;; Θ1). split.
+    + constructor.
+      * eapply inst_wl_app with (Θ2 := Θ0; k ≔ ⧼bk_box⧽).
+        -- eauto using inst_wl_ss_dom_notin_r.
+        -- eapply inst_wl_k_subst_cons; eauto.
+           ++ eauto using inst_wl_ss_dom_notin_r.
+           ++ eauto 3 with inst_wf_ss.
+      * assert (k `notin` dom (Θ0 ;; Θ1)) by
+          eauto using inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+        constructor.
+        -- eauto 4 with inst_wf_ss ss_weaken.
+        -- eauto with inst_wf_ss ss_weaken in_.
+    + auto.
   - admit.
   - admit.
-  - admit.
-  - admit.
-  - admit.
+  - destruct IHwl_step as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    conclude_ss_extend. simplify_list_eq.
+    rewrite app_nil_r in *.
+    exists (Γ ⫢ Γ'2 ⫢ Γ'0 ⊨ ⧼k⧽' ≲ ⧼k⧽'), (Θ3; x ≔ ⧼k⧽;; Θ2; y ≔ ⧼k⧽;; Θ1). split.
+    + econstructor.
+      * eapply inst_wl_app with (Θ2 := Θ3; x ≔ ⧼k⧽;; Θ2; y ≔ ⧼k⧽).
+        -- constructor.
+           ** eapply inst_wl_app with (Θ3; x ≔ ⧼k⧽); auto.
+           ** eauto using inst_wl_ss_dom_notin_r.
+        -- eapply inst_wl_k_subst_cons.
+           ++ eassumption.
+           ++ eauto using
+                inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+           ++ eauto 4 with inst_wf_ss in_.
+      * assert (y `notin` dom (Θ3; x ≔ ⧼ k ⧽;; Θ2;; Θ1))
+                by eauto 6 using
+                     inst_wl_ss_dom_notin_r, wl_dom_k_subst_notin.
+        econstructor.
+        -- constructor.
+           ++ eauto 3 with ss_weaken inst_wf_ss.
+           ++ rewrite app_comm_cons.
+              rewrite <- app_assoc.
+              apply in_insert.
+        -- constructor; eauto 3 using in_insert with ss_weaken inst_wf_ss.
+    + destruct k; eauto.
+  - inst_cofinites_by' gather_atoms_transfer.
+    destruct H0 as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    exists (Γ0 ⊨ e1 ≲ e2), Θ'. split.
+    + eauto with ss_strengthen.
+    + econstructor.
+      * apply solve_check_check in Solve.
+        simpl in Solve. eassumption.
+      * eauto using solve_uncons.
+  (* cont application *)
+  - destruct IHwl_step as (Γ0 & Θ & Inst & Solve).
+    destruct_insts.
+    admit.
   (* var binding *)
   - admit.
   (* ex binding *)

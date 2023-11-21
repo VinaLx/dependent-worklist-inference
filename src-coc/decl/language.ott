@@ -1,0 +1,221 @@
+metavar exprvar, x, y, z ::= {{ repr-locally-nameless }}
+metavar number, n ::= {{ coq nat }}
+
+grammar
+
+kind, k :: 'k_' ::= {{ com kind }}
+  | *   :: :: star {{ com type of type }}
+  | box :: :: box  {{ com type of type of type }}
+
+expr, e, A, B, C, D :: 'e_' ::= {{ com expressions }}
+  | x       :: :: var  {{ com variable }}
+  | k       :: :: kind {{ com type of type }}
+  | n       :: :: num  {{ com integer value }}
+  | int     :: :: int  {{ com integer type }}
+  | e1 e2   :: :: app  {{ com application }}
+  | lambda x . e     :: :: abs  (+ bind x in e +) {{ com abstraction }}
+  | pi     x : A . B :: :: pi   (+ bind x in B +) {{ com dependent product }}
+  | ( e )         :: S :: paren {{ coq ([[e]]) }}
+  | [ e1 / x ] e2 :: M :: subst {{ coq (open_expr_wrt_expr [[x e2]] [[e1]]) }}
+
+dir, d :: 'd_' ::=
+  | Check :: :: check
+  | Infer :: :: infer
+
+context, G :: 'ctx_' ::=
+  | nil       :: :: nil
+  | G , x : A :: :: cons
+
+dcont, c :: 'dc_' ::=
+  | Done        :: :: done
+  | _ . e => c :: :: app
+%  | _ --> c    :: :: reduce
+%  | _ <: A , c :: :: inst
+  | _ <~: A     :: :: check
+
+depsign, ds :: 'ds_' ::=
+  | Dep  :: :: d
+  | Ndep :: :: nd
+
+dwork, w :: 'dw_' ::=
+  | G |= e <= A :: :: check
+  | e => c      :: :: infer
+  | A ds e => c :: :: infer_app
+%  | e --> c :: :: reduce
+  | A <~: B :: :: compact
+  | c $ e   :: :: apply
+
+dworklist, wl :: 'dwl_' ::=
+  | wnil         :: :: nil
+  | wl |- w      :: :: cons
+  | wl ,' x :' A :: :: bind
+  | wl ,' TAG    :: :: tag
+
+formula :: formula_ ::=
+  | judgement  ::   :: judgement
+  | x # G      :: M :: ctx_fresh {{ coq ([[x]] `notin` ctx_dom [[G]]) }}
+  | x # FV e   :: M :: expr_fresh {{ coq ([[x]] `notin` fv_expr [[e]]) }}
+
+substitutions
+  single e x :: subst
+
+freevars
+  expr    x :: fv
+
+embed {{ coq
+
+Fixpoint ctx_dom (G : context) : atoms :=
+  match G with
+  | ctx_nil => {}
+  | ctx_cons G x A => add x (ctx_dom G)
+  end
+.
+
+}}
+
+defns
+Reduce :: '' ::=
+
+defn
+e1 --> e2 :: :: reduce :: 'r_' {{ com Reduction in Source Language }}
+by
+
+e1 --> e2
+---------------- :: app
+e1 e3 --> e2 e3
+
+-------------------------------------------- :: beta
+(lambda x . e1) e2 --> [e2 / x] e1
+
+defns
+InContext :: '' ::=
+
+defn
+x : A in G :: :: in_ctx :: 'in_'
+by
+
+------------------ :: here
+x : A in G, x : A
+
+x : A in G
+------------------ :: there
+x : A in G, y : B
+
+defns
+Typing :: '' ::=
+
+defn
+|- G :: :: wf_context :: 'wf_'
+by
+
+------- :: nil
+|- nil
+
+|- G
+x # G
+G |- A : k
+------------- :: cons
+|- G , x : A
+
+defn
+G |- e : A :: :: tp :: 't_'
+by
+
+
+|- G
+x : A in G
+------------------- :: var
+G |- x : A
+
+|- G
+------------------- :: lit
+G |- n : int
+
+|- G
+------------------- :: star
+G |- * : box
+
+|- G
+------------------- :: int
+G |- int : *
+
+G |- A : k1
+G , x : A |- e : B
+-------------------------------- :: abs
+G |- lambda x . e : pi x : A. B
+
+G |- A : k1
+G , x : A |- B : k2
+----------------------- :: pi
+G |- pi x : A. B : k2
+
+G |- e2 : A
+G |- e1 : pi x : A. B
+----------------------- :: app
+G |- e1 e2 : [e2/x]B
+
+
+defns
+TypeComplete :: '' ::=
+
+defn
+|-_ G :: :: wf_context2 :: 'wfc_'
+by
+
+------- :: nil
+|-_ nil
+
+|-_ G
+x # G
+G |-_ A Infer k
+---------------- :: cons
+|-_ G , x : A
+
+defn
+G |-_ e d A :: :: tp2 :: 'tc_'
+by
+
+
+|-_ G
+x : A in G
+------------------- :: var
+G |-_ x Infer A
+
+|-_ G
+------------------- :: lit
+G |-_ n Infer int
+
+|-_ G
+------------------- :: star
+G |-_ * Infer box
+
+|-_ G
+------------------- :: int
+G |-_ int Infer *
+
+G |-_ A Infer k1
+G , x : A |-_ e Infer B
+G |-_ B Infer k2
+x # FV B
+-------------------------------- :: abs_i
+G |-_ lambda x . e Infer pi x : A. B
+
+G |-_ A Infer k1
+G , x : A |-_ e Check B
+G |-_ B Infer k2
+-------------------------------- :: abs_c
+G |-_ lambda x . e Check pi x : A. B
+
+G |-_ A Infer k1
+G , x : A |-_ B Infer k2
+----------------------- :: pi
+G |-_ pi x : A. B Infer k2
+
+G |-_ e2 Infer A
+G |-_ e1 Infer pi x : A. B
+----------------------- :: app
+G |-_ e1 e2 Infer [e2/x]B
+
+G |-_ e Infer A
+---------------- :: switch
+G |-_ e Check A

@@ -1,6 +1,7 @@
 Require Export bidir.notations.
 Require Import Program.Equality.
 Require Import bidir.properties.
+Require Import ln_utils.
 
 Reserved Notation "G1 ⫢ G2" (at level 58, left associativity).
 Fixpoint dwl_app (G1 G2 : dworklist) :=
@@ -97,6 +98,10 @@ Inductive dwl_step : dworklist → Prop :=
 where "⪧ wl" := (dwl_step wl) : type_scope
 .
 
+#[export]
+Hint Constructors dwl_step : core.
+
+
 Lemma solve_infer_infer : forall Γ e1 e2 c
   , ⪧ Γ ⊨ e1 <: e2 ⇒ c
   → exists A, ⌊ Γ ⌋ ⊢ e1 <: e2 ⇒ A ∧ ⪧ Γ ⊨ c $ A.
@@ -120,6 +125,73 @@ Proof.
   - eauto using infer_k_check.
 Qed.
 
+Inductive vsign : Set :=
+| v_pos : vsign
+| v_neg : vsign
+.
 
-#[export]
-Hint Constructors dwl_step : core.
+Definition vneg (s : vsign) : vsign :=
+  match s with
+  | v_pos => v_neg
+  | v_neg => v_pos
+  end
+.
+
+Reserved Notation "Γ ⊢ e1 ⤚ ⇥ e2"
+  (at level 65, e1 at level 50, no associativity).
+Inductive dmonoize : bcontext → bexpr → bexpr → Prop :=
+| dmz_var   : forall Γ x, Γ ⊢ `'x  ⤚ ⇥ `'x
+| dmz_kind  : forall Γ k, Γ ⊢ ⧼k⧽' ⤚ ⇥ ⧼k⧽'
+| dmz_num : forall Γ n, Γ ⊢ be_num n ⤚ ⇥ be_num n
+| dmz_int : forall Γ, Γ ⊢ be_int   ⤚ ⇥ be_int
+| dmz_bot : forall Γ A
+  , Γ ⊢ be_bot A ⤚ ⇥ be_bot A
+| dmz_app : forall Γ f1 f2 a
+  , mono_btype a
+  → Γ ⊢ f1 ⤚ ⇥ f2
+  → Γ ⊢ be_app f1 a ⤚ ⇥ be_app f2 a
+| dmz_abs : forall L Γ e1 A B e2
+  , (forall x, x `notin` L → Γ,' x : A ⊢ e1 ^`' x ⤚ ⇥ e2 ^`' x)
+  → Γ ⊢ λ, A , e1 : B ⤚ ⇥ λ, A , e2 : B
+| dmz_pi : forall L Γ A B1 B2
+  , mono_btype A
+  → (forall x, x `notin` L →
+      Γ,' x : A ⊢ B1 ^`' x ⤚ ⇥ B2 ^`' x)
+  → Γ ⊢ be_pi A B1 ⤚ ⇥ be_pi A B2
+| dmz_bind : forall L Γ e1 A B e2
+  , (forall x, x `notin` L → Γ,' x : A ⊢ e1 ^`' x ⤚ ⇥ e2 ^`' x)
+  → Γ ⊢ Λ, A , e1 : B ⤚ ⇥ Λ, A , e2 : B
+| dmz_forall : forall Γ A B C e
+  , mono_btype e
+  → Γ ⊢ e ⇐ A
+  → Γ ⊢ B ^^' e ⤚ ⇥ C
+  → Γ ⊢ be_all A B ⤚ ⇥ C
+(*
+| dmz_forall_neg : forall Γ L A B C
+  , (forall x, x `notin` L → x `notin` fv_bexpr (B ^`' x))
+  → (forall x, x `notin` L → Γ ⊢ B ^`' x ⤚ v_neg ⇥ C)
+  → Γ ⊢ be_all A B ⤚ v_neg ⇥ C
+*)
+| dmz_castdn : forall Γ e1 e2
+  , Γ ⊢ e1 ⤚ ⇥ e2
+  → Γ ⊢ be_castdn e1 ⤚ ⇥ be_castdn e2
+| dmz_castup : forall Γ e1 A e2
+  , Γ ⊢ e1 ⤚ ⇥ e2
+  → Γ ⊢ be_castup A e1 ⤚ ⇥ be_castup A e2
+| dmz_anno : forall Γ e1 e2 A
+  , Γ ⊢ e1 ⤚ ⇥ e2
+  → Γ ⊢ be_anno e1 A ⤚ ⇥ be_anno e2 A
+where "Γ ⊢ e1 ⤚ ⇥ e2" := (dmonoize Γ e1 e2) : type_scope.
+
+
+Lemma dmonoize_welltyped : forall Γ e e' d A
+  , Γ ⊢ e ⤚ ⇥ e'
+  → busub Γ e e d A
+  → busub Γ e e' d A.
+Proof.
+  induction 1; intros.
+  1-7: admit.
+  - admit.
+  - admit.
+  - admit.
+Admitted.

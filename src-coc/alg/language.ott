@@ -1,0 +1,96 @@
+metavar aexprvar, x, y, z ::= {{ repr-locally-nameless }}
+metavar number , n      ::= {{ coq nat }}
+metavar exvar  , ex, ey ::= {{ coq var }}
+metavar kindvar, kx, ky ::= {{ coq var }}
+
+grammar
+
+akind, k :: 'ak_' ::=
+  | *   :: :: star
+  | box :: :: box
+  | kx  :: :: ex
+
+aexpr, e, A, B, C, D, t, s :: 'ae_' ::=
+  | x   :: :: var
+  | k   :: :: kind
+  | ex  :: :: ex
+  | n   :: :: num
+  | int :: :: int
+  | e1 e2   :: :: app
+  | lambda x . e :: :: abs  (+ bind x in e +)
+  | pi     x : A . B :: :: pi   (+ bind x in B +)
+%  | castup [ A ] e :: :: castup
+%  | castdn e       :: :: castdn
+  | ( e )         :: S :: paren {{ coq ([[e]]) }}
+  | [ e1 / x ] e2 :: M :: subst {{ coq (open_aexpr_wrt_aexpr [[x e2]] [[e1]]) }}
+
+binding, bd :: 'b_' ::=
+  |   x  :' A :: :: var
+  | ^ ex : k :: :: ex
+  | < kx >   :: :: kind
+
+cont, c :: 'c_' ::=
+  | Done :: :: done
+  | _ . e1 & e2 => c :: :: app
+%  | _ --> c    :: :: reduce
+%  | _ <: A , c :: :: inst
+  | _ <~: A    :: :: check
+
+acontext, G :: 'actx_' ::=
+  | anil      :: :: nil
+  | G , x : A :: :: cons
+
+work, w :: 'w_' ::=
+  | G |= e1 ~= e2 <= A :: :: check
+  | e1 ~= e2 => c    :: :: infer
+  | A . e1 & e2 => c :: :: infer_app
+%  | e --> c :: :: reduce
+  | A <~: B :: :: compact
+  | c $ e   :: :: apply
+
+worklist, wl :: 'wl_' ::=
+  | nil     :: :: nil
+  | wl |- w :: :: cons
+  | wl , bd  :: :: bind
+  | wl , TAG :: :: tag
+
+formula :: formula_ ::=
+  | judgement :: :: judgement
+
+substitutions
+  single e x  :: subst
+  single w  x :: subst
+  single wl x :: subst
+  single e ex  :: ex_subst
+  single w  ex :: ex_subst
+  single wl ex :: ex_subst
+  single k kx  :: k_subst
+  single e kx  :: k_subst
+  single w  kx :: k_subst
+  single wl kx :: k_subst
+
+freevars
+  aexpr x  :: fv
+  aexpr ex :: fex
+  akind kx :: fkv
+
+defns
+Reduce :: '' ::=
+
+defn
+e1 --> e2 :: :: areduce :: 'ar_'
+by
+
+e1 --> e2
+---------------- :: app
+e1 e3 --> e2 e3
+
+------------------------------------------------------- :: beta
+(lambda x . e) e2 --> [e2 / x] e1
+
+% e1 --> e2
+% -------------------------------- :: castdn
+% castdn e1 --> castdn e2
+
+% -------------------------------- :: cast_elim
+% castdn (castup [A] e) --> e
