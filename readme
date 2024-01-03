@@ -1,0 +1,26 @@
+## Versions of tools
+
+It works in my environment, not necessarily the minimum versions of the tools.
+
+- coqc 8.13.2
+- lngen 0.3.1
+- ott 0.31
+
+## Implementations
+
+- `src-lite`: The implementation related to the system with universal subtyping and universal quantifiers.
+  + `alg`: Definitions related to algorithmic worklist
+  + `decl`: Definitions related to the type assignment system
+  + `bidir`: Definitions related to the declarative worklist
+  + Consult "notations.v" in the directories for fancy, difficult-to-understand coq notations.
+
+There is a huge hassle in the correspondence between the declarative worklist and should be refactored. (Things related to the elaboration of type assignment system because type assignment system and the declarative worklist don't have a consistent expression definition).
+
+Designs related to making the decidablity work are not reflected anywhere in the implementation.
+
+- `src-coc`: The implementation related to the system with the type inference for unannotated Calculus of Constructions.
+  + `alg`: Definitions related to algorithmic worklist
+  + `decl`: Defintions related to the type assignemnt system and declarative worklist
+  + Consult "notations.v" in the directories for fancy, difficult-to-understand coq notations.
+
+Most of the file names should be self-explanatory. A LOT of the theorems are not completed, but most of the listed ones should be proveable.
