@@ -70,7 +70,7 @@ Inductive dwl_step : dworklist → Prop :=
 | dst_infer_app : forall Γ A c e1 e2 B C
   , ⌊ Γ ⌋ ⊢ A ⇒Π B, C
   → ⌊ Γ ⌋ ⊢ e1 <: e2 ⇐ B
-  → ⪧ Γ ⊨ c $ B ^^' e1
+  → ⪧ Γ ⊨ c $ C ^^' e1
   → ⪧ Γ ⊨ A ⋅ e1 & e2 ⇒ c
 | dst_reduce : forall Γ A c B
   , ⌊ Γ ⌋ ⊢ A ⟼ B

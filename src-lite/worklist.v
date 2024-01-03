@@ -275,8 +275,8 @@ Inductive wl_step : worklist -> Prop :=
   → ⪧′ Γ ⊨′ ⋆′ ⇐′ ◻′
 | st_bot : forall L Γ A1 A2 c
   , (forall k, k `notin` L
-    -> ⪧′ Γ ,′ ⧼^k⧽ ⊨′ A1 <: A2 ⇐′ ⧼`^k⧽ ⊨′ A2 <: A1 ⇐′ ⧼`^k⧽)
-  → ⪧′ Γ ⊨′ c $′ A1 ⊨′ ae_bot A1 <: ae_bot A2 ⇒′ c
+    -> ⪧′ Γ ,′ ⧼^k⧽  ⊨′ c $′ A1 ⊨′ A1 <: A2 ⇐′ ⧼`^k⧽ ⊨′ A2 <: A1 ⇐′ ⧼`^k⧽)
+  → ⪧′ Γ ⊨′ ae_bot A1 <: ae_bot A2 ⇒′ c
 | st_app : forall Γ L f1 f2 a1 a2 c
   , smono_atype a1 → smono_atype a2
   → ⪧′ Γ ⊨′ f1 <: f2 ⇒′ c_app a1 a2 c
